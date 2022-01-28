@@ -1,31 +1,44 @@
+'''
+Command line wordle game
+
+Author: Kamron Cole kjc8084@rit.edu
+'''
 import os
 import random
 
+# Colours used in output
 RED = '\033[1;31m'
 GREEN = '\033[1;32m'
 WHITE = '\033[0m'
 YELLOW = '\033[1;33m'
 
+# Numerical values too handle guess results easier
 CORRECT_ALL = 100 # correct letter and position.
 CORRECT_LETTER = 50 # correct letter wrong position.
 WRONG = 0 # Wrong letter and position.
 
+# Assign colour to guess result
 GUESS_RESULT_DICT = {
     CORRECT_ALL: GREEN,
     CORRECT_LETTER: YELLOW,
     WRONG: WHITE
 }
 
+# Game Constants
 WORD_LEN = 5
 MAX_GUESSES = 6
 ASSETS_PATH = '/assets'
 ALLOWED_GUESSES_PATH = f'.{ASSETS_PATH}/wordle-allowed-guesses.txt'
 POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-answers.txt'
 
-ALLOWED_WORDS = sorted([word.strip() for word in open(ALLOWED_GUESSES_PATH).readlines()])
-WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()])
+ALLOWED_WORDS = sorted([word.strip() for word in open(ALLOWED_GUESSES_PATH).readlines()]) # Possible guesses including answers
+WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()]) # Possible answers
+
 
 class Guess:
+    '''
+    A players single guess in a wordle game
+    '''
     __slots__ = ['__guess', '__answer', '__feedback']
 
 
@@ -43,6 +56,10 @@ class Guess:
 
 
     def __build_feedback(self) -> list:
+        '''
+        Build a list<str, int> containing (letter in word, hint result) where the index is a letter's position and 
+        hint result is decided depending on the answer.
+        '''
         result = []
         for i in range(len(self.__guess)):
             letter = self.__guess[i]
@@ -55,15 +72,14 @@ class Guess:
         return result
 
 
-    def get_feedback(self) -> list:
-        return self.__feedback
-
-
-    def is_answer(self) -> bool:
-        return self.__guess == self.__answer
+    def get_feedback(self) -> list: return self.__feedback
+    def is_answer(self) -> bool: return self.__guess == self.__answer
         
 
 class Board:
+    '''
+    Wordle game board that keeps track of player's previous guesses
+    '''
     __slots__ = ['__board', '__guesses']
 
 
@@ -80,11 +96,17 @@ class Board:
 
 
     def make_guess(self, guess: Guess):
+        '''
+        insert guess into the board and prepare it for next guess.
+        '''
         self.__board[self.__guesses] = guess
         self.__guesses += 1
 
 
 class Wordle:
+    '''
+    Wordle game where a player attempts to guess a certain length word within a certain number of guesses and is given feedback on the letter's position and whether the word contains it for each guess
+    '''
     __slots__ = ['__allowed_words', '__words', '__answer', '__guesses', '__board']
 
     
@@ -101,9 +123,12 @@ class Wordle:
     
 
     def make_guess(self, raw_guess: str) -> Guess:
+        '''
+        given a word, make a guess and
+        '''
         raw_guess = raw_guess.lower()
         if raw_guess not in self.__allowed_words:
-            os.system('cls')
+            self.__clear_screen()
             print(f'{RED}"{raw_guess}" is not on the word list.{WHITE}')
             return None
 
@@ -114,6 +139,9 @@ class Wordle:
 
 
     def play(self):
+        '''
+        Play the game through a command line, prompting for a guess MAX_GUESSES number of times, invalid guesses arent counted
+        '''
         while self.__guesses < MAX_GUESSES:
             print(self.__board)
             print()
@@ -128,10 +156,20 @@ class Wordle:
                 return
 
             self.__guesses += 1
-            os.system('cls')
+            self.__clear_screen()
             print()
         print(self.__board)
         print(f'{RED}Unluckers! Maybe next time.{WHITE}')
+
+    
+    def __clear_screen(self):
+        '''
+        clear terminal based on operating system
+        '''
+        if os.name == 'nt':
+             os.system('cls')
+        else: 
+            os.system('clear')
 
 
     def get_answer(self):
