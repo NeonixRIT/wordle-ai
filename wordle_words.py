@@ -11,6 +11,7 @@ CONDITIONS = ast.literal_eval(data)
 
 print(CONDITIONS)
 
+# Remove any words that don't include the letters we know are good
 NEW_WORDS = list()
 for word in WORDS:
     keep = True
@@ -21,6 +22,7 @@ for word in WORDS:
         NEW_WORDS.append(word)
 WORDS = NEW_WORDS
 
+# Remove any words that include letters we know are not good
 NEW_WORDS = list()
 for word in WORDS:
     keep = True
@@ -31,6 +33,7 @@ for word in WORDS:
         NEW_WORDS.append(word)
 WORDS = NEW_WORDS
 
+# Remove any words that don't have the good letters in the correct positions
 for pos in '12345':
     NEW_WORDS = list()
     for word in WORDS:
@@ -39,6 +42,7 @@ for pos in '12345':
             NEW_WORDS.append(word)
     WORDS = NEW_WORDS
 
+# Remove any words that have the good letters in the wrong positions
 i = -1
 for pos in 'abcde':
     i += 1
