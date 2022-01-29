@@ -1,13 +1,16 @@
+import csv
 import random
 import wordle
 
-ALLOWED_FULL = [word.strip() for word in open(wordle.POSSIBLE_ANSWERS_PATH).readlines()]
+ALLOWED_FULL = [word.strip() for word in open(wordle.ALLOWED_GUESSES_PATH).readlines()]
+
+from alive_progress import alive_bar
 
 class WordleAI():
     __slots__ = ['__letters', '__wordle', '__words', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried']
 
 
-    def __init__(self, wordle: wordle.Wordle) -> None:
+    def __init__(self, wordle: wordle.Wordle, starting_word: str = 'soare') -> None:
         self.__letters = {
             'CORRECT_ALL': set(),
             'CORRECT_LETTER': set(),
@@ -16,7 +19,7 @@ class WordleAI():
 
         self.__wordle = wordle
         self.__words = [word for word in ALLOWED_FULL]
-        self.__first_guess = 'soare'
+        self.__first_guess = starting_word
         self.__next_guess = self.__first_guess
         self.__guesses = 0
         self.__won = False
@@ -83,13 +86,6 @@ class WordleAI():
     def get_result_str(self) -> str: return self.__result_str
 
 
-def compile_results(results_dict) -> dict:
-    avg_results_dict = dict()
-    for word, data in results_dict.items():
-        avg_results_dict[word] = 0.0 if data[1] == 0 else round(data[0] / data[1], 2)
-    return avg_results_dict
-
-
 def write_result_dict(final_words, out_filename, iters):
     with open(out_filename, 'a') as file:
         file.write('\n')
@@ -100,29 +96,79 @@ def write_result_dict(final_words, out_filename, iters):
             file.write(f'    {word} : {avg_score}\n')
 
 
-def main():
-    won_games = 0
-    lost_games = 0
-    for _ in range(10000):
-        game = wordle.Wordle()
-        # print(game.get_answer())
-        bot = WordleAI(game)
-        bot.run()
-        results = bot.get_result()
-        guess = results[0]
-        score = results[1]
-        won = results[2]
-        answer = results[3]
-        if won:
-            won += 1
-        else:
-            lost_games += 1
-        # print(game)
-        # print(game.get_answer())
-        # print(answer)
-    print(f'Won: {won_games}')
-    print(f'Lost: {lost_games}')
+def output_file_to_dict(filename):
+    result_dict = dict()
+    with open(filename) as file:
+        reader = csv.reader(file)
+        for record in reader:
+            guess = record[0]
+            score = int(record[1])
+            if guess in result_dict:
+                avg_score = result_dict[guess][0]
+                n = result_dict[guess][1]
+                new_average = round((avg_score * (n / (n + 1))) + (score / (n + 1)), 2)
+                result_dict[guess] = [new_average, n + 1]
+            else:
+                result_dict[guess] = [score, 1]
+    return result_dict
 
+
+
+def main():
+    iterations = 25000000
+    iteration = 0
+    result_dict = dict()
+    score_filename = f'first_quess_results_score.txt'
+    winrate_filename = f'first_quess_results_winrate.txt'
+    try:
+        with alive_bar(iterations) as bar:
+            while iteration < iterations:
+                # print(f'Running iteration {iteration}')
+                game = wordle.Wordle()
+                # print(game.get_answer())
+                bot = WordleAI(game, random.choice(ALLOWED_FULL))
+                bot.run()
+                results = bot.get_result()
+                guess = results[0]
+                score = results[1]
+                won = results[2]
+                answer = results[3]
+                if guess in result_dict:
+                    avg_score = result_dict[guess][0]
+                    n = result_dict[guess][1]
+                    num_wins = result_dict[guess][2]
+                    new_n = n + 1
+                    new_wins = num_wins + int(won)
+                    new_win_rate = new_wins / new_n
+                    new_average = round((avg_score * (n / (new_n))) + (score / (new_n)), 2)
+                    result_dict[guess] = [new_average, new_n, new_wins, new_win_rate]
+                else:
+                    result_dict[guess] = [score, 1, int(won), int(won)]
+
+                iteration += 1
+                bar()
+    except (Exception, KeyboardInterrupt) as e:
+        print(f'\n{wordle.RED}Error has occured: {e}{wordle.WHITE}')
+
+    final_words_score = sorted([list for list in result_dict.items()], key= lambda item: item[1], reverse=True)
+    final_words_winrate = sorted([list for list in result_dict.items()], key= lambda item: item[1][3], reverse=True)
+    write_result_dict(final_words_score, score_filename, iterations)
+    write_result_dict(final_words_winrate, winrate_filename, iterations)
+
+    print('Top 10 starting words for score:')
+    print()
+    print('    word'.ljust(16) + 'score')
+    top_10_words_score = final_words_score[:10]
+    for i in range(len(top_10_words_score)):
+        print(f'    {top_10_words_score[i][0]}'.ljust(16) + str(top_10_words_score[i][1][0]))
+
+    print()
+    print('Top 10 starting words for winrate:')
+    print()
+    print('    word'.ljust(16) + 'winrate')
+    top_10_words_winrate = final_words_winrate[:10]
+    for i in range(len(top_10_words_winrate)):
+        print(f'    {top_10_words_winrate[i][0]}'.ljust(16) + str(top_10_words_winrate[i][1][3]))
 
 
 if __name__ == '__main__':
