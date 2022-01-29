@@ -1,5 +1,7 @@
 import ast
 
+from numpy import True_
+
 ASSETS_PATH = '/assets'
 POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-answers.txt'
 WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()]) # Possible answers
@@ -52,10 +54,12 @@ for pos in 'abcde':
         if len(mustExclude) == 0:
             NEW_WORDS.append(word)
         else:
+            keep = True
             for keepOut in mustExclude:
-                if word[int(i)] != keepOut:
-                    if word not in NEW_WORDS:
-                        NEW_WORDS.append(word)
+                if word[int(i)] == keepOut:
+                    keep = False
+            if keep and word not in NEW_WORDS:
+                NEW_WORDS.append(word)
     WORDS = NEW_WORDS
 
 print(WORDS)
