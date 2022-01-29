@@ -13,9 +13,9 @@ class WordleAI():
 
     def __init__(self, wordle, iteration) -> None:
         self.__letters = {
-            'CORRECT_ALL': [],
-            'CORRECT_LETTER': [],
-            'WRONG': []
+            'CORRECT_ALL': set(),
+            'CORRECT_LETTER': set(),
+            'WRONG': set()
         }
 
         self.__wordle = wordle
@@ -40,13 +40,19 @@ class WordleAI():
         for i in range(len(feedback)):
             letter, result = feedback[i]
             if result == wordle.CORRECT_ALL:
-                self.__letters['CORRECT_ALL'].append((letter, i))
+                self.__letters['CORRECT_ALL'].add((letter, i))
                 score += 20
+
+                if (letter, None) in self.__letters['WRONG']:
+                    self.__letters['WRONG'].remove((letter, None))
             elif result == wordle.CORRECT_LETTER:
-                self.__letters['CORRECT_LETTER'].append((letter, i))
+                self.__letters['CORRECT_LETTER'].add((letter, i))
                 score += 10
-            elif result == wordle.WRONG and letter not in (record[0] for record in self.__letters['CORRECT_LETTER']):
-                self.__letters['WRONG'].append((letter, None))
+
+                if (letter, None) in self.__letters['WRONG']:
+                    self.__letters['WRONG'].remove((letter, None))
+            elif result == wordle.WRONG and (letter not in [record[0] for record in self.__letters['CORRECT_ALL']] and letter not in [record[0] for record in self.__letters['CORRECT_LETTER']]):
+                self.__letters['WRONG'].add((letter, None))
                 score += 0
         return score
 
@@ -138,15 +144,14 @@ def main():
         print(f'\n{wordle.RED}Error has occured: {e}{wordle.WHITE}')
 
     final_words = sorted([[word, score] for word, score in result_dict.items()], key= lambda item: item[1], reverse=True)
-    write_result_dict(final_words, result_filename, iterations)
+    write_result_dict(final_words, result_filename, iteration)
 
     print('Top 10 starting words:')
     print()
     print('    word'.ljust(16) + 'score')
     top_10_words = final_words[:10]
     for i in range(len(top_10_words)):
-        print(f'    {top_10_words[i][0]}'.ljust(16) + str(top_10_words[i][1][0]))
-    
+        print(f'    {top_10_words[i][0]}'.ljust(16) + str(top_10_words[i][1][0]))  
 
 
 if __name__ == '__main__':
