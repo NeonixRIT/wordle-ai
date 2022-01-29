@@ -1,8 +1,6 @@
 import random
 import wordle
 
-from alive_progress import alive_bar
-
 ALLOWED_FULL = [word.strip() for word in open(wordle.POSSIBLE_ANSWERS_PATH).readlines()]
 
 class WordleAI():
