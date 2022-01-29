@@ -55,20 +55,39 @@ class Guess:
         return string
 
 
+    def __backward_check_result(self, flag, result):
+        if flag in result:
+            for j in range(len(result)):
+                if result[j] == flag:
+                    result[j][1] = WRONG
+                    break
+
     def __build_feedback(self) -> list:
         '''
         Build a list<str, int> containing (letter in word, hint result) where the index is a letter's position and 
         hint result is decided depending on the answer.
         '''
+        answer_dict = dict()
+        for i in range(len(self.__answer)):
+            letter = self.__answer[i]
+            if letter not in answer_dict:
+                answer_dict[letter] = []
+            answer_dict[letter].append(i)
+
         result = []
         for i in range(len(self.__guess)):
             letter = self.__guess[i]
-            if letter == self.__answer[i]:
-                result.append((letter, CORRECT_ALL))
-            elif letter in self.__answer and (letter, CORRECT_LETTER) not in result:
-                result.append((letter, CORRECT_LETTER))
+            if letter in answer_dict and i in answer_dict[letter]:
+                item = [letter, CORRECT_ALL]
+                self.__backward_check_result([letter, CORRECT_LETTER], result)
+                result.append(item)
+                answer_dict[letter].remove(i)
+            elif letter in answer_dict and len(answer_dict[letter]) > 0:
+                flag = [letter, CORRECT_LETTER]
+                self.__backward_check_result(flag, result)
+                result.append(flag)
             else:
-                result.append((letter, WRONG))
+                result.append([letter, WRONG])
         return result
 
 
@@ -142,6 +161,7 @@ class Wordle:
         '''
         Play the game through a command line, prompting for a guess MAX_GUESSES number of times, invalid guesses arent counted
         '''
+        self.__clear_screen()
         while self.__guesses < MAX_GUESSES:
             print(self.__board)
             print()
@@ -150,12 +170,12 @@ class Wordle:
             if guess == None:
                 continue
 
+            self.__guesses += 1
             if guess.is_answer():
                 print(self.__board)
                 print(f'{GREEN}Congratulations! {self.__guesses}/{MAX_GUESSES}{WHITE}')
                 return
 
-            self.__guesses += 1
             self.__clear_screen()
             print()
         print(self.__board)
@@ -183,6 +203,7 @@ class Wordle:
 def main():
     game = Wordle()
     game.play()
+    # print(game.get_answer())
 
 
 if __name__ == '__main__':
