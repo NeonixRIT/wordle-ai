@@ -101,8 +101,8 @@ def write_result_dict(final_words, out_filename, iters):
 
 
 def main():
-    won = 0
-    lost = 0
+    won_games = 0
+    lost_games = 0
     for _ in range(10000):
         game = wordle.Wordle()
         # print(game.get_answer())
@@ -116,12 +116,12 @@ def main():
         if won:
             won += 1
         else:
-            lost += 1
+            lost_games += 1
         # print(game)
         # print(game.get_answer())
         # print(answer)
-    print(f'Won: {won}')
-    print(f'Lost: {lost}')
+    print(f'Won: {won_games}')
+    print(f'Lost: {lost_games}')
 
 
 
