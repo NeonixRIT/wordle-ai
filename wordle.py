@@ -152,7 +152,7 @@ class Wordle:
 
             if guess.is_answer():
                 print(self.__board)
-                print(f'{GREEN}Congratulations! {self.__guesses}/{MAX_GUESSES}{WHITE}')
+                print(f'{GREEN}Congratulations! {self.__guesses+1}/{MAX_GUESSES}{WHITE}')
                 return
 
             self.__guesses += 1
