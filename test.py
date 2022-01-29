@@ -41,7 +41,7 @@ def get_screen(bbox: list, color_space = cv2.COLOR_BGR2RGB):
     
 
 def read_test_image():
-    return cv2.imread('./assets/test_img.png')
+    return cv2.imread('./assets/test_img_2.png')
 
 
 def combine_horizontally_color(images, padding = 0):
@@ -146,6 +146,7 @@ def read_img_to_board(image) -> wordle.Board:
 def main():
     screen = read_test_image()
     board = read_img_to_board(screen)
+    print(board)
     bot = wordle_ai.WordleAI(board)
 
 if __name__ == '__main__':

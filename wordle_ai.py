@@ -3,7 +3,7 @@ import wordle
 
 from alive_progress import alive_bar
 
-ALLOWED_FULL = [word.strip() for word in open(wordle.ALLOWED_GUESSES_PATH).readlines()]
+ALLOWED_FULL = [word.strip() for word in open(wordle.POSSIBLE_ANSWERS_PATH).readlines()]
 
 class WordleAI():
     __slots__ = ['__letters', '__wordle', '__words', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried']
