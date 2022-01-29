@@ -13,8 +13,8 @@ WHITE = '\033[0m'
 YELLOW = '\033[1;33m'
 
 # Numerical values too handle guess results easier
-CORRECT_ALL = 100 # correct letter and position.
-CORRECT_LETTER = 50 # correct letter wrong position.
+CORRECT_ALL = 20 # correct letter and position.
+CORRECT_LETTER = 10 # correct letter wrong position.
 WRONG = 0 # Wrong letter and position.
 
 # Assign colour to guess result
@@ -39,13 +39,27 @@ class Guess:
     '''
     A players single guess in a wordle game
     '''
-    __slots__ = ['__guess', '__answer', '__feedback']
+    __slots__ = ['__guess', '__answer', '__feedback', '__score']
 
 
-    def __init__(self, guess: str, answer: str):
-        self.__guess = guess
-        self.__answer = answer
-        self.__feedback = self.__build_feedback()
+    def __init__(self, *args):
+        '''
+        Params:
+            guess:str - players guess
+            answer:str - wordle games answer
+            OR
+            results:list[str, int] - same list returned by __build_feedback
+        '''
+        if len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+            self.__guess = args[0]
+            self.__answer = args[1]
+            self.__score = 0
+            self.__feedback = self.__build_feedback()
+
+        elif len(args) == 1 and isinstance(args[0], list) and len(args[0]) == WORD_LEN:
+            self.__feedback = args[0]
+            self.__guess, self.__score = self.__values_from_result(self.__feedback)
+            self.__answer = self.__guess if self.is_answer() else None
 
 
     def __str__(self):
@@ -61,6 +75,7 @@ class Guess:
                 if result[j] == flag:
                     result[j][1] = WRONG
                     break
+
 
     def __build_feedback(self) -> list:
         '''
@@ -81,18 +96,31 @@ class Guess:
                 item = [letter, CORRECT_ALL]
                 self.__backward_check_result([letter, CORRECT_LETTER], result)
                 result.append(item)
+                self.__score += CORRECT_ALL
                 answer_dict[letter].remove(i)
             elif letter in answer_dict and len(answer_dict[letter]) > 0:
                 flag = [letter, CORRECT_LETTER]
                 self.__backward_check_result(flag, result)
                 result.append(flag)
+                self.__score += CORRECT_LETTER
             else:
                 result.append([letter, WRONG])
+                self.__score += WRONG
         return result
 
 
+    def __values_from_result(self, result:list[str, int]) -> int:
+        guess = ''
+        score = 0
+        for letter, value in result:
+            guess += letter
+            score += value
+        return guess, score
+
+
     def get_feedback(self) -> list: return self.__feedback
-    def is_answer(self) -> bool: return self.__guess == self.__answer
+    def is_answer(self) -> bool: return self.__score == 100
+    def get_score(self) -> int: return self.__score
         
 
 class Board:
@@ -120,6 +148,9 @@ class Board:
         '''
         self.__board[self.__guesses] = guess
         self.__guesses += 1
+
+    
+    def get_guesses(self) -> list: return self.__board
 
 
 class Wordle:
@@ -190,14 +221,11 @@ class Wordle:
              os.system('cls')
         else: 
             os.system('clear')
+        pass
 
 
-    def get_answer(self):
-        return self.__answer
-
-
-    def get_board(self):
-        return self.__board
+    def get_answer(self) -> str: return self.__answer
+    def get_board(self) -> Board: return self.__board
 
 
 def main():
