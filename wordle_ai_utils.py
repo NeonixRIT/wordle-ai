@@ -4,7 +4,7 @@ import wordle
 
 from PIL import ImageGrab
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 TOP = 291
 BOTTOM = 691
@@ -134,6 +134,8 @@ def read_img_to_board(image) -> wordle.Board:
     scores = [get_scores(row) for row in get_rows(image)]
     new_image = remove_black_and_invert(image)
     letters = get_words(new_image)
+    if not scores[0]:
+        raise AttributeError('invalid letter or scores found from image.')
     return make_game_board(letters, scores)
 
 
