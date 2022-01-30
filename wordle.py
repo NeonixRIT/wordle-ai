@@ -69,19 +69,26 @@ class Guess:
         return string
 
 
-    def __backward_check_result(self, flag, result):
+    def __backward_check_result(self, flag, result, answer_dict):
+        '''
+        Goes back in results list and changes score in first instance of flag (list[letter, score]) to the proper value.
+        '''
         if flag in result:
             for j in range(len(result)):
                 if result[j] == flag:
-                    result[j][1] = WRONG
+                    if len(answer_dict[flag[0]]) > 1: # if there the letter in the word and all the same letter havent been parsed yet
+                        result[j][1] = CORRECT_LETTER
+                    else:
+                        result[j][1] = WRONG
                     break
 
 
     def __build_feedback(self) -> list:
         '''
         Build a list<str, int> containing (letter in word, hint result) where the index is a letter's position and 
-        hint result is decided depending on the answer.
+        hint result is decided depending on the answer. Hint result is used to colorize output.
         '''
+        # Build dictionary mapping letter to indexes, len of any dictionary value is letter count
         answer_dict = dict()
         for i in range(len(self.__answer)):
             letter = self.__answer[i]
@@ -92,18 +99,19 @@ class Guess:
         result = []
         for i in range(len(self.__guess)):
             letter = self.__guess[i]
-            if letter in answer_dict and i in answer_dict[letter]:
-                item = [letter, CORRECT_ALL]
-                self.__backward_check_result([letter, CORRECT_LETTER], result)
+            if letter in answer_dict and i in answer_dict[letter]: # if letter in word and in correct position
+                item = [letter, CORRECT_ALL] # make result entry
+                flag = [letter, CORRECT_LETTER]
+                self.__backward_check_result(flag, result, answer_dict) # change previous entry of same letter to proper value
                 result.append(item)
                 self.__score += CORRECT_ALL
-                answer_dict[letter].remove(i)
-            elif letter in answer_dict and len(answer_dict[letter]) > 0:
+                answer_dict[letter].remove(i) # remove already used letter index from dictionary
+            elif letter in answer_dict and len(answer_dict[letter]) > 0: # if letter in word but not in correct position
                 flag = [letter, CORRECT_LETTER]
-                self.__backward_check_result(flag, result)
+                self.__backward_check_result(flag, result, answer_dict) # change previous entry of same letter to proper value
                 result.append(flag)
                 self.__score += CORRECT_LETTER
-            else:
+            else: # letter not in word
                 result.append([letter, WRONG])
                 self.__score += WRONG
         return result
@@ -204,6 +212,7 @@ class Wordle:
 
             self.__guesses += 1
             if guess.is_answer():
+                self.__clear_screen()
                 print(self.__board)
                 print(f'{GREEN}Congratulations! {self.__guesses}/{MAX_GUESSES}{WHITE}')
                 return
