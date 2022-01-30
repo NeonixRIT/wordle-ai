@@ -106,6 +106,8 @@ def get_scores(row) -> list:
     new = list(np.array_split(row[0], 5))
     for array in new:
         array = list(filter(lambda color: list(color) != PADDING_COLOR, array))
+        if not array:
+            raise AttributeError('invalid letter or scores found from image.')
         color = list(array[0])
         for score, dict_color in SCORE_TO_COLOR.items():
             if colors_equal(color, dict_color):

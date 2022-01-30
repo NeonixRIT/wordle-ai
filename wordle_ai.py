@@ -135,7 +135,7 @@ class WordleAI():
                 self.__next_guess = np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
                 self.__guesses += 1
             except AttributeError as e:
-                print(f'{wordle.RED}Error: {e}\nlikely because board was not found{wordle.WHITE}')
+                print(f'{wordle.RED}Error: {e}\nlikely because board was not found, or not in focus.{wordle.WHITE}')
                 time.sleep(3)
         time.sleep(1)
         if score == 100:
