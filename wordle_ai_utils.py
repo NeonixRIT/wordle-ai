@@ -1,14 +1,10 @@
 import cv2
 import numpy as np
 import wordle
-import wordle_ai
 
 from PIL import ImageGrab
-from pynput.keyboard import Controller
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-K_CON = Controller()
 
 TOP = 291
 BOTTOM = 691
@@ -21,8 +17,6 @@ PADDING = 6
 PADDING_COLOR = [19, 18, 18]
 MAX_ROWS = 6
 MAX_COLS = 5
-
-
 
 # CORRECT ALL    = rgb( 83, 141, 78) or [ 78 141  83]
 # CORRECT LETTER = rgb(180, 159, 59) or [ 59 159 180]
@@ -145,9 +139,9 @@ def read_img_to_board(image) -> wordle.Board:
 
 def main():
     screen = read_test_image()
+    # screen = get_screen(WORDLE_GAME_BOX_1080P)
     board = read_img_to_board(screen)
-    print(board)
-    bot = wordle_ai.WordleAI(board)
+    print(board.get_num_guesses())
 
 if __name__ == '__main__':
     main()
