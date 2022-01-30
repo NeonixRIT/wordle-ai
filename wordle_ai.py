@@ -15,7 +15,7 @@ WORD_WEIGHTS = json.loads(open('./assets/word_weights.json').read())
 
 
 class WordleAI():
-    __slots__ = ['__letters', '__wordle', '__words', '__weights', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried', '__probability_distribution']
+    __slots__ = ['__letters', '__wordle', '__words', '__weights', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried', '__probability_distribution', '__weighted_words']
 
 
     def __init__(self, wordle: wordle.Wordle, starting_word: str = 'soare') -> None:
@@ -112,21 +112,31 @@ class WordleAI():
         score = 0
         time.sleep(1)
         while score < 100 and self.__guesses < wordle.MAX_GUESSES:
-            self.type_guess(keyboard, self.__next_guess)
-            time.sleep(3)
-            game_img = wordle_ai_utils.get_screen(wordle_ai_utils.WORDLE_GAME_BOX_1080P)
-            board = wordle_ai_utils.read_img_to_board(game_img)
-            guess = board.get_guesses()[self.__guesses]
-            score = guess.get_score()
-            print(guess, score)
-            self.read_report(guess)
-            if self.__guesses == 0:
-                self.__results[0] = self.__next_guess
-                self.__results[1] = score
-            self.narrow_words()
-            # self.__next_guess = random.choice(self.__words)
-            self.__next_guess = np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
-            self.__guesses += 1
+            try:
+                # check on game window
+                game_img = wordle_ai_utils.get_screen(wordle_ai_utils.WORDLE_GAME_BOX_1080P)
+                board = wordle_ai_utils.read_img_to_board(game_img)
+                # make guess
+                self.type_guess(keyboard, self.__next_guess)
+                # wait for website animation to finish
+                time.sleep(3)
+                # update internal board from image
+                game_img = wordle_ai_utils.get_screen(wordle_ai_utils.WORDLE_GAME_BOX_1080P)
+                board = wordle_ai_utils.read_img_to_board(game_img)
+                guess = board.get_guesses()[self.__guesses]
+                score = guess.get_score()
+                print(guess, score)
+                self.read_report(guess)
+                if self.__guesses == 0:
+                    self.__results[0] = self.__next_guess
+                    self.__results[1] = score
+                self.narrow_words()
+                # self.__next_guess = random.choice(self.__words)
+                self.__next_guess = np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
+                self.__guesses += 1
+            except AttributeError as e:
+                print(f'{wordle.RED}Error: {e}\nlikely because board was not found{wordle.WHITE}')
+                time.sleep(3)
         time.sleep(1)
         if score == 100:
             self.__won = True
@@ -139,7 +149,6 @@ class WordleAI():
     def run_cli(self):
         score = 0
         while score < 100 and self.__guesses < wordle.MAX_GUESSES:
-            print(self.__guesses)
             guess = self.make_guess(self.__next_guess)
             score = guess.get_score()
             self.read_report(guess)
