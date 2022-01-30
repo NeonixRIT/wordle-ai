@@ -159,6 +159,7 @@ class Board:
 
     
     def get_guesses(self) -> list: return self.__board
+    def get_guesses_num(self) -> int: return self.__guesses
     def is_empty(self) -> bool: return self.__guesses == 0
 
 

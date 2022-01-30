@@ -17,7 +17,8 @@ Python packages:
  - numpy
  - opencv-python
  - pillow
+ - alive-progress
 
-which could be done with `python -m pip install pytesseract pynput numpy opencv-python pillow`
+which could be done with `python -m pip install pytesseract pynput numpy opencv-python pillow alive-progress`
 
 you might have to change `pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'` at the top of wordle_ai_utils.py (line 7) to where youre tesseract.exe was installed to if it is not on your PATH

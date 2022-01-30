@@ -13,6 +13,20 @@ def count_letters():
     return count_dict
 
 
+def winrate_dict(filename):
+    winrate_dict = dict()
+    with open(filename) as file:
+        next(file)
+        next(file)
+        for line in file.readlines():
+            tokens = line.strip().split(' : ')
+            word = tokens[0]
+            winrate = eval(tokens[1])[3]
+            winrate_dict[word] = winrate
+    return winrate_dict
+                
+
+
 def weighed_results(count_dict):
     total = len(wordle.ALLOWED_WORDS) * 5
     weight_dict = dict()
@@ -47,20 +61,23 @@ def main():
     # weight_dict = weighed_results(count_dict)
 
     # word_weights = word_weight(weight_dict)
-    # import json
+    import json
+    winrates_dict = winrate_dict('first_guess_results_winrate.txt')
+    with open('./assets/word_weights_winrate.json', 'w') as file:
+        json.dump(winrates_dict, file)
     # with open('./assets/word_weights.json', 'w') as file:
     #     json.dump(word_weights, file)
-    word_weights = None
-    with open('./assets/word_weights.json') as file:
-        word_weights = json.loads(file.read())
+    # word_weights = None
+    # with open('./assets/word_weights.json') as file:
+    #     word_weights = json.loads(file.read())
     
-    words, weight = list(zip(*word_weights.items()))
+    words, weight = list(zip(*winrates_dict.items()))
     random_word = np.random.choice(words, 5, False, np.array(weight) / sum(weight))
     print(random_word)
-    # full_list = sorted([list for list in word_weights.items()], key= lambda item: item[1], reverse=True)
-    # top_10_list = full_list[:10]
-    # for entry in top_10_list:
-    #     print(entry)
+    full_list = sorted([list for list in winrates_dict.items()], key= lambda item: item[1], reverse=True)
+    top_10_list = full_list[:10]
+    for entry in top_10_list:
+        print(entry)
 
 
 if __name__ == '__main__':

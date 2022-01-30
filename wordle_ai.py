@@ -15,8 +15,9 @@ import numpy as np
 from alive_progress import alive_bar
 from pynput.keyboard import Key, Controller
 
-ALLOWED_FULL = [word.strip() for word in open(wordle.ALLOWED_GUESSES_PATH).readlines()]
-WORD_WEIGHTS = json.loads(open('./assets/word_weights.json').read())
+WORD_WEIGHTS_LETTER_PROB = json.loads(open('./assets/word_weights_letter_prob.json').read())
+WORD_WEIGHT_WINRATE = json.loads(open('./assets/word_weights_winrate.json').read())
+ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
 
 
 class WordleAI():
@@ -26,7 +27,7 @@ class WordleAI():
     __slots__ = ['__letters', '__wordle', '__words', '__weights', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried', '__probability_distribution', '__weighted_words']
 
 
-    def __init__(self, wordle: wordle.Wordle, starting_word: str = 'soare') -> None:
+    def __init__(self, wordle: wordle.Wordle, starting_word: str = 'proms') -> None:
         self.__letters = {
             'CORRECT_ALL': set(),
             'CORRECT_LETTER': set(),
@@ -35,9 +36,8 @@ class WordleAI():
 
         self.__wordle = wordle
         # self.__words = [word for word in ALLOWED_FULL]
-        self.__words, self.__weights = list(zip(*WORD_WEIGHTS.items()))
-        self.__words = list(self.__words)
-        self.__weights = list(self.__weights)
+        self.__words = list(ALLOWED_FULL)
+        self.__weights = list(WEIGHTS)
         self.__first_guess = starting_word
         self.__next_guess = self.__first_guess
         self.__guesses = 0
@@ -86,7 +86,7 @@ class WordleAI():
                 if word[index] == letter:
                     new_words.append(word)
                 else:
-                    self.__weights.remove(WORD_WEIGHTS[word])
+                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
             self.__words = new_words
         for letter, index in self.__letters['CORRECT_LETTER']:
             new_words = []
@@ -94,7 +94,7 @@ class WordleAI():
                 if letter in word:
                     new_words.append(word)
                 else:
-                    self.__weights.remove(WORD_WEIGHTS[word])
+                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
             self.__words = new_words
         for letter, _ in self.__letters['WRONG']:
             new_words = []
@@ -102,7 +102,7 @@ class WordleAI():
                 if letter not in word:
                     new_words.append(word)
                 else:
-                    self.__weights.remove(WORD_WEIGHTS[word])
+                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
             self.__words = new_words
         for letter, index in self.__yellow_tried:
             new_words = []
@@ -110,7 +110,7 @@ class WordleAI():
                 if word[index] != letter:
                     new_words.append(word)
                 else:
-                    self.__weights.remove(WORD_WEIGHTS[word])
+                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
             self.__words = new_words
 
         self.__probability_distribution = np.array(self.__weights) / sum(self.__weights)
@@ -196,6 +196,9 @@ class WordleAI():
     
     def get_result(self) -> list: return self.__results
     def get_result_str(self) -> str: return self.__result_str
+    def get_remaining_words(self) -> list: return self.__words
+    def get_starting_word(self) -> str: return self.__first_guess
+    def get_next_guesses(self) -> str: return np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
 
 
 def write_result_dict(final_words: list[str], out_filename: str, iters: int) -> None:
@@ -239,9 +242,9 @@ def data_compiler() -> None:
     iterations = 100000
     iteration = 0
     result_dict = dict()
-    score_filename = f'first_quess_results_score.txt'
-    winrate_filename = f'first_quess_results_winrate.txt'
-    words, weights = list(zip(*WORD_WEIGHTS.items()))
+    score_filename = f'first_guess_results_score.txt'
+    winrate_filename = f'first_guess_results_winrate.txt'
+    words, weights = (ALLOWED_FULL, WEIGHTS)
     probability_dist = np.array(weights) / sum(weights)
     try:
         with alive_bar(iterations) as bar:
@@ -295,15 +298,27 @@ def data_compiler() -> None:
         
 
 def main():
-    words, weights = list(zip(*WORD_WEIGHTS.items()))
+    # data_compiler()
+    words, weights = (ALLOWED_FULL, WEIGHTS)
     probability_dist = np.array(weights) / sum(weights)
-    game = wordle.Wordle()
-    bot = WordleAI(game, np.random.choice(words, 1, False, probability_dist)[0])
-    # bot.run_cli()
-    bot.run_web_gui()
-    # print(game)
-    # print(game.get_answer())
-    print(bot.get_result()[3])
+
+    wins = 0
+    loses = 0
+    for i in range(1000):
+        game = wordle.Wordle()
+        bot = WordleAI(game) #, np.random.choice(words, 1, False, probability_dist)[0])
+        bot.run_cli()
+        results = bot.get_result()
+        if results[2]:
+            wins += 1
+        else:
+            loses += 1
+            print(game)
+            print(game.get_answer())
+            print(bot.get_result()[3])
+        # bot.run_web_gui()
+    print(f'Wins: {wins}')
+    print(f'Loses: {loses}')
 
 
 if __name__ == '__main__':
