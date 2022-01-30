@@ -202,6 +202,7 @@ class Wordle:
         Play the game through a command line, prompting for a guess MAX_GUESSES number of times, invalid guesses arent counted
         '''
         self.__clear_screen()
+        print()
         while self.__guesses < MAX_GUESSES:
             print(self.__board)
             print()
@@ -219,6 +220,7 @@ class Wordle:
 
             self.__clear_screen()
             print()
+        print(f'{GREEN}{self.__answer}{WHITE}')
         print(self.__board)
         print(f'{RED}Unluckers! Maybe next time.{WHITE}')
 
