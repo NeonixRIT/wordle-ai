@@ -1,5 +1,5 @@
 '''
-Command line wordle game
+Command line Wordle game
 
 Author: Kamron Cole kjc8084@rit.edu
 '''
@@ -37,7 +37,7 @@ WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()
 
 class Guess:
     '''
-    A players single guess in a wordle game
+    A players single guess in a Wordle game
     '''
     __slots__ = ['__guess', '__answer', '__feedback', '__score']
 

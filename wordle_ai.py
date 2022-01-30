@@ -1,3 +1,8 @@
+'''
+Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
+
+Author: Kamron Cole kjc8084@rit.edu
+'''
 import csv
 import json
 import random
@@ -15,6 +20,9 @@ WORD_WEIGHTS = json.loads(open('./assets/word_weights.json').read())
 
 
 class WordleAI():
+    '''
+    Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
+    '''
     __slots__ = ['__letters', '__wordle', '__words', '__weights', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried', '__probability_distribution', '__weighted_words']
 
 
@@ -41,10 +49,16 @@ class WordleAI():
 
 
     def make_guess(self, raw_guess: str) -> wordle.Guess:
+        '''
+        Make a guess on an internal Wordle game
+        '''
         return self.__wordle.make_guess(raw_guess)
 
 
-    def read_report(self, guess: wordle.Guess):
+    def read_report(self, guess: wordle.Guess) -> None:
+        '''
+        Read a guess's report and add letters to dict that will help solve for a word by removing invalid entries from the word list
+        '''
         feedback = guess.get_feedback()
         for i in range(len(feedback)):
             letter, result = feedback[i]
@@ -62,7 +76,10 @@ class WordleAI():
                 self.__letters['WRONG'].add((letter, None))
 
 
-    def narrow_words(self):
+    def narrow_words(self) -> None:
+        '''
+        Using a dict of all feedback gained from previous guesses, remove words and their weight from from their respective list so that the remaining words meet the criteria of the answer
+        '''
         for letter, index in self.__letters['CORRECT_ALL']:
             new_words = []
             for word in self.__words:
@@ -99,7 +116,10 @@ class WordleAI():
         self.__probability_distribution = np.array(self.__weights) / sum(self.__weights)
 
 
-    def type_guess(self, keyboard, guess: str):
+    def type_guess(self, keyboard, guess: str) -> None:
+        '''
+        Type a guess into the web GUI wordle game
+        '''
         for letter in guess:
             keyboard.press(letter)
             keyboard.release(letter)
@@ -107,7 +127,10 @@ class WordleAI():
         keyboard.release(Key.enter)
 
 
-    def run_web_gui(self):
+    def run_web_gui(self) -> None:
+        '''
+        Attempt to solve web GUI Wordle game by reading board state in from images and narrowing down word list from consecutive guesss' feedback
+        '''
         keyboard = Controller()
         score = 0
         time.sleep(1)
@@ -147,6 +170,9 @@ class WordleAI():
 
 
     def run_cli(self):
+        '''
+        Attempt to solve CLI Wordle game by reading board state in from Wordle game and narrowing down word list from consecutive guesss' feedback
+        '''
         score = 0
         while score < 100 and self.__guesses < wordle.MAX_GUESSES:
             guess = self.make_guess(self.__next_guess)
@@ -172,7 +198,10 @@ class WordleAI():
     def get_result_str(self) -> str: return self.__result_str
 
 
-def write_result_dict(final_words, out_filename, iters):
+def write_result_dict(final_words: list[str], out_filename: str, iters: int) -> None:
+    '''
+    Write results dict into a file to save results
+    '''
     with open(out_filename, 'a') as file:
         file.write('\n')
         file.write(f'Iterations: {iters}\n')
@@ -182,7 +211,11 @@ def write_result_dict(final_words, out_filename, iters):
             file.write(f'    {word} : {avg_score}\n')
 
 
-def output_file_to_dict(filename):
+def output_file_to_dict(filename: str) -> dict[str, list[float, int]]:
+    '''
+    Read csv file of WordleAI results and compile data into a result dict
+    This function is only used for compiling really old data from WordleAI
+    '''
     result_dict = dict()
     with open(filename) as file:
         reader = csv.reader(file)
@@ -199,7 +232,10 @@ def output_file_to_dict(filename):
     return result_dict
 
 
-def data_compiler():
+def data_compiler() -> None:
+    '''
+    Helper function used to run multiple iterations to compile some set of data
+    '''
     iterations = 100000
     iteration = 0
     result_dict = dict()
