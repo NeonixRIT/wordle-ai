@@ -275,8 +275,8 @@ def data_compiler() -> None:
 
     final_words_score = sorted([list for list in result_dict.items()], key= lambda item: item[1], reverse=True)
     final_words_winrate = sorted([list for list in result_dict.items()], key= lambda item: item[1][3], reverse=True)
-    write_result_dict(final_words_score, score_filename, iterations)
-    write_result_dict(final_words_winrate, winrate_filename, iterations)
+    write_result_dict(final_words_score, score_filename, iteration)
+    write_result_dict(final_words_winrate, winrate_filename, iteration)
 
     print('Top 10 starting words for score:')
     print()
