@@ -68,6 +68,15 @@ class Guess:
             string += f'{GUESS_RESULT_DICT[result]}[{letter}]{WHITE}'
         return string
 
+    
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, Guess):
+            return False
+
+        if __o.get_feedback() == self.get_feedback():
+            return True
+        return False
+
 
     def __backward_check_result(self, flag, result, answer_dict):
         '''
@@ -148,6 +157,16 @@ class Board:
         for guess in self.__board:
             string += f'{guess}\n'
         return string
+
+    
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, Guess):
+            return False
+
+        for i in range(len(self.get_guesses())):
+            if __o.get_gesses()[i] != self.get_guesses()[i]:
+                return False
+        return True
 
 
     def make_guess(self, guess: Guess):
