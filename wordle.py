@@ -5,6 +5,7 @@ Author: Kamron Cole kjc8084@rit.edu
 '''
 import os
 import random
+import numpy as np
 
 # Colours used in output
 RED = '\033[1;31m'
@@ -39,7 +40,7 @@ class Guess:
     '''
     A players single guess in a Wordle game
     '''
-    __slots__ = ['__guess', '__answer', '__feedback', '__score']
+    __slots__ = ['__guess', '__answer', '__feedback', '__score', '__answer_dict']
 
 
     def __init__(self, *args):
@@ -54,12 +55,19 @@ class Guess:
             self.__guess = args[0]
             self.__answer = args[1]
             self.__score = 0
+            self.__answer_dict = dict()
+            # Build dictionary mapping letter to indexes, len of any dictionary value is letter count
+            for i in range(len(self.__answer)):
+                letter = self.__answer[i]
+                if letter not in self.__answer_dict:
+                    self.__answer_dict[letter] = []
+                self.__answer_dict[letter].append(i)
             self.__feedback = self.__build_feedback()
-
         elif len(args) == 1 and isinstance(args[0], list) and len(args[0]) == WORD_LEN:
             self.__feedback = args[0]
             self.__guess, self.__score = self.__values_from_result(self.__feedback)
             self.__answer = self.__guess if self.is_answer() else None
+            self.__answer_dict = None
 
 
     def __str__(self):
@@ -97,27 +105,19 @@ class Guess:
         Build a list<str, int> containing (letter in word, hint result) where the index is a letter's position and 
         hint result is decided depending on the answer. Hint result is used to colorize output.
         '''
-        # Build dictionary mapping letter to indexes, len of any dictionary value is letter count
-        answer_dict = dict()
-        for i in range(len(self.__answer)):
-            letter = self.__answer[i]
-            if letter not in answer_dict:
-                answer_dict[letter] = []
-            answer_dict[letter].append(i)
-
         result = []
         for i in range(len(self.__guess)):
             letter = self.__guess[i]
-            if letter in answer_dict and i in answer_dict[letter]: # if letter in word and in correct position
+            if letter in self.__answer_dict and i in self.__answer_dict[letter]: # if letter in word and in correct position
                 item = [letter, CORRECT_ALL] # make result entry
                 flag = [letter, CORRECT_LETTER]
-                self.__backward_check_result(flag, result, answer_dict) # change previous entry of same letter to proper value
+                self.__backward_check_result(flag, result, self.__answer_dict) # change previous entry of same letter to proper value
                 result.append(item)
                 self.__score += CORRECT_ALL
-                answer_dict[letter].remove(i) # remove already used letter index from dictionary
-            elif letter in answer_dict and len(answer_dict[letter]) > 0: # if letter in word but not in correct position
+                self.__answer_dict[letter].remove(i) # remove already used letter index from dictionary
+            elif letter in self.__answer_dict and len(self.__answer_dict[letter]) > 0: # if letter in word but not in correct position
                 flag = [letter, CORRECT_LETTER]
-                self.__backward_check_result(flag, result, answer_dict) # change previous entry of same letter to proper value
+                self.__backward_check_result(flag, result, self.__answer_dict) # change previous entry of same letter to proper value
                 result.append(flag)
                 self.__score += CORRECT_LETTER
             else: # letter not in word
@@ -126,7 +126,7 @@ class Guess:
         return result
 
 
-    def __values_from_result(self, result:list[str, int]) -> int:
+    def __values_from_result(self, result:list[str, int]) -> tuple:
         guess = ''
         score = 0
         for letter, value in result:
@@ -136,8 +136,9 @@ class Guess:
 
 
     def get_feedback(self) -> list: return self.__feedback
-    def is_answer(self) -> bool: return self.__score == 100
+    def is_answer(self) -> bool: return self.__guess == self.__answer
     def get_score(self) -> int: return self.__score
+    def get_guess_raw(self) -> str: return self.__guess
         
 
 class Board:
@@ -189,11 +190,16 @@ class Wordle:
     __slots__ = ['__allowed_words', '__words', '__answer', '__guesses', '__board']
 
     
-    def __init__(self):
+    def __init__(self, answer = None):
         self.__board = Board()
         self.__allowed_words = ALLOWED_WORDS
         self.__words = WORDS
-        self.__answer = random.choice(self.__words)
+        
+        if not answer:
+            self.__answer = random.choice(self.__words)
+        else:
+            self.__answer = answer
+            
         self.__guesses = 0
 
     
@@ -261,9 +267,9 @@ class Wordle:
 
 
 def main():
-    game = Wordle()
+    game = Wordle('could')
+    print(game.get_answer())
     game.play()
-    # print(game.get_answer())
 
 
 if __name__ == '__main__':
