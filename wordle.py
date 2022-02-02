@@ -36,6 +36,7 @@ GUESS_RESULT_DICT = {
     WRONG: WHITE
 }
 
+
 class Guess:
     '''
     A players single guess in a Wordle game
