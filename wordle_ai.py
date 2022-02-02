@@ -24,28 +24,29 @@ class WordleAI():
     '''
     Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
     '''
-    __slots__ = ['__letters', '__wordle', '__words', '__weights', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__yellow_tried', '__probability_distribution', '__weighted_words']
+    __slots__ = ['__hints_dict', '__wordle', '__word_weights_dict', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__probability_distribution']
 
 
     def __init__(self, wordle: wordle.Wordle, starting_word: str = 'proms') -> None:
-        self.__letters = {
-            'CORRECT_ALL': set(),
-            'CORRECT_LETTER': set(),
-            'WRONG': set()
+        self.__hints_dict = {
+            'INCLUDED': set(), # Letters in the word
+            'EXCLUDED': set(), # Letters not in the word
+            # Where included letters belong
+            'CORRECT': set(),
+            # Where included letters do not belong
+            'GUESSED': set()
         }
 
         self.__wordle = wordle
-        # self.__words = [word for word in ALLOWED_FULL]
-        self.__words = list(ALLOWED_FULL)
-        self.__weights = list(WEIGHTS)
+        self.__word_weights_dict = dict(WORD_WEIGHTS_LETTER_PROB)
         self.__first_guess = starting_word
         self.__next_guess = self.__first_guess
         self.__guesses = 0
         self.__won = False
         self.__results = [None for _ in range(4)]
         self.__result_str = ''
-        self.__yellow_tried = []
-        self.__probability_distribution = np.array(self.__weights) / sum(self.__weights)
+        weights = self.__word_weights_dict.values()
+        self.__probability_distribution = np.array(list(weights)) / sum(weights)
 
 
     def make_guess(self, raw_guess: str) -> wordle.Guess:
@@ -63,57 +64,56 @@ class WordleAI():
         for i in range(len(feedback)):
             letter, result = feedback[i]
             if result == wordle.CORRECT_ALL:
-                self.__letters['CORRECT_ALL'].add((letter, i))
+                self.__hints_dict['INCLUDED'].add(letter)
+                self.__hints_dict['CORRECT'].add((letter, i))
+                if letter in self.__hints_dict['EXCLUDED']:
+                    self.__hints_dict['EXCLUDED'].remove(letter)
+            if result == wordle.CORRECT_LETTER:
+                self.__hints_dict['INCLUDED'].add(letter)
+                self.__hints_dict['GUESSED'].add((letter, i))
+                if letter in self.__hints_dict['EXCLUDED']:
+                    self.__hints_dict['EXCLUDED'].remove(letter)
+            if result == wordle.WRONG and letter not in self.__hints_dict['INCLUDED']:
+                self.__hints_dict['GUESSED'].add((letter, i))
+                self.__hints_dict['EXCLUDED'].add(letter)
+                
 
-                if (letter, None) in self.__letters['WRONG']:
-                    self.__letters['WRONG'].remove((letter, None))
-            elif result == wordle.CORRECT_LETTER:
-                self.__letters['CORRECT_LETTER'].add((letter, i))
-                self.__yellow_tried.append((letter, i))
-                if (letter, None) in self.__letters['WRONG']:
-                    self.__letters['WRONG'].remove((letter, None))
-            elif result == wordle.WRONG and (letter not in [record[0] for record in self.__letters['CORRECT_ALL']] and letter not in [record[0] for record in self.__letters['CORRECT_LETTER']]):
-                self.__letters['WRONG'].add((letter, None))
 
+    def narrow_from_correct_all(self):
+        for letter, index in self.__hints_dict['CORRECT']:
+            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if word[index] == letter}
+                    
+    
+    def narrow_from_correct_letter(self):
+        for letter in self.__hints_dict['INCLUDED']:
+            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if letter in word}
+    
+    
+    def narrow_from_wrong_letter(self):
+        for letter in self.__hints_dict['EXCLUDED']:
+            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if letter not in word}
+    
+    
+    def narrow_from_correct_letters_pos_tried(self):
+        for letter, index in self.__hints_dict['GUESSED']:
+            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if word[index] != letter}
+            
 
+    def update_probability_distribution(self):
+        weights = self.__word_weights_dict.values()
+        self.__probability_distribution = np.array(list(weights)) / sum(weights)
+    
+    
     def narrow_words(self) -> None:
         '''
         Using a dict of all feedback gained from previous guesses, remove words and their weight from from their respective list so that the remaining words meet the criteria of the answer
         '''
-        for letter, index in self.__letters['CORRECT_ALL']:
-            new_words = []
-            for word in self.__words:
-                if word[index] == letter:
-                    new_words.append(word)
-                else:
-                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
-            self.__words = new_words
-        for letter, index in self.__letters['CORRECT_LETTER']:
-            new_words = []
-            for word in self.__words:
-                if letter in word:
-                    new_words.append(word)
-                else:
-                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
-            self.__words = new_words
-        for letter, _ in self.__letters['WRONG']:
-            new_words = []
-            for word in self.__words:
-                if letter not in word:
-                    new_words.append(word)
-                else:
-                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
-            self.__words = new_words
-        for letter, index in self.__yellow_tried:
-            new_words = []
-            for word in self.__words:
-                if word[index] != letter:
-                    new_words.append(word)
-                else:
-                    self.__weights.remove(WORD_WEIGHTS_LETTER_PROB[word])
-            self.__words = new_words
-
-        self.__probability_distribution = np.array(self.__weights) / sum(self.__weights)
+        self.__word_weights_dict.pop(self.__next_guess)
+        self.narrow_from_correct_all()
+        self.narrow_from_correct_letter()
+        self.narrow_from_correct_letters_pos_tried()
+        self.narrow_from_wrong_letter()
+        self.update_probability_distribution()
 
 
     def type_guess(self, keyboard, guess: str) -> None:
@@ -153,9 +153,12 @@ class WordleAI():
                 if self.__guesses == 0:
                     self.__results[0] = self.__next_guess
                     self.__results[1] = score
+                    
+                if score >= 100:
+                    break
+                
                 self.narrow_words()
-                # self.__next_guess = random.choice(self.__words)
-                self.__next_guess = np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
+                self.__next_guess = np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
                 self.__guesses += 1
             except AttributeError as e:
                 print(f'{wordle.RED}Error: {e}\nlikely because board was not found, or not in focus.{wordle.WHITE}')
@@ -165,7 +168,7 @@ class WordleAI():
             self.__won = True
 
         self.__results[2] = self.__won
-        self.__results[3] = [word for word in self.__words]
+        self.__results[3] = [word for word in self.__word_weights_dict.keys()]
         self.__result_str = f'"{self.__results[0]}","{self.__results[1]}","{self.__results[2]}","{self.__results[3]}"\n'
 
 
@@ -181,24 +184,27 @@ class WordleAI():
             if self.__guesses == 0:
                 self.__results[0] = self.__next_guess
                 self.__results[1] = score
+            
+            if score >= 100:
+                break
+            
             self.narrow_words()
-            # self.__next_guess = random.choice(self.__words)
-            self.__next_guess = np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
+            self.__next_guess = np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
             self.__guesses += 1
         
         if score == 100:
             self.__won = True
 
         self.__results[2] = self.__won
-        self.__results[3] = [word for word in self.__words]
+        self.__results[3] = [word for word in self.__word_weights_dict.keys()]
         self.__result_str = f'"{self.__results[0]}","{self.__results[1]}","{self.__results[2]}","{self.__results[3]}"\n'
 
     
     def get_result(self) -> list: return self.__results
     def get_result_str(self) -> str: return self.__result_str
-    def get_remaining_words(self) -> list: return self.__words
+    def get_remaining_words(self) -> list: return list(self.__word_weights_dict.keys())
     def get_starting_word(self) -> str: return self.__first_guess
-    def get_next_guesses(self) -> str: return np.random.choice(self.__words, 1, False, self.__probability_distribution)[0]
+    def get_sug_next_guesses(self) -> str: return np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
 
 
 def write_result_dict(final_words: list[str], out_filename: str, iters: int) -> None:
@@ -297,29 +303,45 @@ def data_compiler() -> None:
         print(f'    {top_10_words_winrate[i][0]}'.ljust(16) + str(top_10_words_winrate[i][1][3]))
         
 
-def main():
-    # data_compiler()
-    words, weights = (ALLOWED_FULL, WEIGHTS)
-    probability_dist = np.array(weights) / sum(weights)
-
+def test_winrate():
     wins = 0
     loses = 0
-    for i in range(1000):
+    for _ in range(10000):
         game = wordle.Wordle()
-        bot = WordleAI(game) #, np.random.choice(words, 1, False, probability_dist)[0])
+        bot = WordleAI(game)
         bot.run_cli()
         results = bot.get_result()
         if results[2]:
             wins += 1
         else:
             loses += 1
-            print(game)
+            print(f'Loss: {loses}')
             print(game.get_answer())
             print(bot.get_result()[3])
-        # bot.run_web_gui()
+            print(game)
     print(f'Wins: {wins}')
     print(f'Loses: {loses}')
-
+    
+    
+def web_solver():
+    game = wordle.Wordle()
+    bot = WordleAI(game) #, np.random.choice(words, 1, False, probability_dist)[0])
+    bot.run_web_gui()
+    
+    
+def cli_solver():
+    game = wordle.Wordle('those')
+    print(game.get_answer())
+    bot = WordleAI(game) #, np.random.choice(words, 1, False, probability_dist)[0])
+    bot.run_cli()
+    print(game)
+    
+    
+def main():
+    # data_compiler()
+    # web_solver()
+    test_winrate()
+    # cli_solver()
 
 if __name__ == '__main__':
     main()
