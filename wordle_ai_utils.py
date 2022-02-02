@@ -3,12 +3,17 @@ Common tasks wordle_ai needs to reads image of Wordle board into a workable boar
 
 Author: Kamron Cole kjc8084@rit.edu
 '''
-import cv2
-import numpy as np
-import wordle
-
 from PIL import ImageGrab
+from pynput.keyboard import Key
+
+import numpy as np
+
+import cv2
 import pytesseract
+
+import wordle
+import wordle_utils as utils
+
 # Uncomment below line and change path if tesseract.exe is not on your PATH
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -29,14 +34,14 @@ CORRECT_LETTER_COLOR = [59, 159, 180]
 WRONG_COLOR = [60, 58, 58]
 
 SCORE_TO_COLOR = {
-    wordle.CORRECT_ALL: CORRECT_ALL_COLOR,
-    wordle.CORRECT_LETTER: CORRECT_LETTER_COLOR,
-    wordle.WRONG: WRONG_COLOR
+    utils.CORRECT_ALL: CORRECT_ALL_COLOR,
+    utils.CORRECT_LETTER: CORRECT_LETTER_COLOR,
+    utils.WRONG: WRONG_COLOR
 }
 
 # Game variables
-MAX_ROWS = wordle.MAX_GUESSES
-MAX_COLS = wordle.WORD_LEN
+MAX_ROWS = utils.MAX_GUESSES
+MAX_COLS = utils.WORD_LEN
 
 
 def get_screen(bbox: list, color_space: int = cv2.COLOR_BGR2RGB) -> np.ndarray:
@@ -46,7 +51,7 @@ def get_screen(bbox: list, color_space: int = cv2.COLOR_BGR2RGB) -> np.ndarray:
     screen = np.array(ImageGrab.grab(bbox))
     screen = cv2.cvtColor(screen, color_space)
     return screen
-    
+
 
 def read_image_from_file(filename) -> np.ndarray:
     '''
@@ -57,10 +62,11 @@ def read_image_from_file(filename) -> np.ndarray:
 
 def combine_horizontally_bw(images: list[np.ndarray], padding: int = 0) -> np.ndarray:
     '''
-    Combine a list of black and white images horizontally with some black padding between them if padding > 0
+    Combine a list of black and white images horizontally with some black padding between them
+    if padding > 0
     '''
     max_height = 0
-    total_width = 0 
+    total_width = 0
     # get final images size
     for image in images:
         image_height = image.shape[0]
@@ -69,7 +75,8 @@ def combine_horizontally_bw(images: list[np.ndarray], padding: int = 0) -> np.nd
             max_height = image_height
         total_width += image_width
     # make empty array that will contain combined image
-    final_image = np.zeros((max_height, (len(images) - 1) * padding + total_width), dtype = np.uint8)
+    final_image = np.zeros((max_height, (len(images) - 1) * padding + total_width),
+                           dtype = np.uint8)
     current_x = 0
     # combine images
     for image in images:
@@ -80,18 +87,50 @@ def combine_horizontally_bw(images: list[np.ndarray], padding: int = 0) -> np.nd
     return final_image
 
 
+def calc_col_x_begin(col_number, crop_padding):
+    '''
+    Calculate beginning of column with pixels cropped off
+    '''
+    return (COL_WIDTH * col_number) + (PADDING * col_number) + crop_padding
+
+
+def calc_col_x_end(col_number, crop_padding):
+    '''
+    Calculate end of column with pixels cropped off
+    '''
+    return (COL_WIDTH * (col_number + 1)) + (PADDING * col_number) - crop_padding
+
+
+def calc_row_y_begin(row_number, crop_padding):
+    '''
+    Calculate beginning of column with pixels cropped off
+    '''
+    return (ROW_HIGHT * row_number) + (PADDING * row_number) + crop_padding
+
+
+def calc_row_y_end(row_number, crop_padding):
+    '''
+    Calculate end of column with pixels cropped off
+    '''
+    return (ROW_HIGHT * (row_number + 1)) + (PADDING * row_number) - crop_padding
+
+
 def get_columns(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
     '''
-    Split image of Wordle game board into separate columns, cropping them horizontally, and return a list of images by column
+    Split image of Wordle game board into separate columns, cropping them horizontally,
+    and return a list of images by column
     '''
-    return [image[:, (COL_WIDTH * i) + (PADDING * i) + crop_padding:(COL_WIDTH * (i + 1)) + (PADDING * i) - crop_padding] for i in range(MAX_COLS)]
+    return [image[:,calc_col_x_begin(i, crop_padding):calc_col_x_end(i, crop_padding)]
+            for i in range(MAX_COLS)]
 
 
 def get_rows(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
     '''
-    Split image of Wordle game board into separate rows, cropping them vertically, and return a list of images by row
+    Split image of Wordle game board into separate rows, cropping them vertically,
+    and return a list of images by row
     '''
-    return [image[(ROW_HIGHT * i) + (PADDING * i) + crop_padding:(ROW_HIGHT * (i + 1)) + (PADDING * i) - crop_padding] for i in range(MAX_ROWS)]
+    return [image[calc_row_y_begin(i, crop_padding):calc_row_y_end(i, crop_padding)]
+            for i in range(MAX_ROWS)]
 
 
 def get_words(screen: np.ndarray) -> list[str]:
@@ -107,12 +146,12 @@ def get_words(screen: np.ndarray) -> list[str]:
     return [list(word) for word in text.lower().split('\n')[:-1]]
 
 
-def colors_equal(c1: list, c2: list, threshold:int = 1) -> bool:
+def colors_equal(c_1: list, c_2: list, threshold:int = 1) -> bool:
     '''
     Check if bgr colors are equal within a sertain threshold of each other
     '''
-    for i in range(len(c1)):
-        if c1[i] not in range(c2[i] - threshold, c2[i] + threshold + 1):
+    for i, value in enumerate(c_1):
+        if value not in range(c_2[i] - threshold, c_2[i] + threshold + 1):
             return False
     return True
 
@@ -136,12 +175,13 @@ def get_scores(row: np.ndarray) -> list[int]:
 
 def remove_black_and_invert(image: np.ndarray) -> np.ndarray:
     '''
-    Set threshold on saturation and value channels then combine them as a mask then invert and return black/white image
+    Set threshold on saturation and value channels
+    then combine them as a mask then invert and return black/white image
     '''
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    thresh1 = cv2.threshold(s, 92, 255, cv2.THRESH_BINARY)[1]
-    thresh2 = cv2.threshold(v, 128, 255, cv2.THRESH_BINARY)[1]
+    _, sat, val = cv2.split(hsv)
+    thresh1 = cv2.threshold(sat, 92, 255, cv2.THRESH_BINARY)[1]
+    thresh2 = cv2.threshold(val, 128, 255, cv2.THRESH_BINARY)[1]
     thresh2 = 255 - thresh2
     mask = cv2.add(thresh1,thresh2)
     return mask
@@ -170,13 +210,27 @@ def read_img_to_board(image: np.ndarray) -> wordle.Board:
     return make_game_board(letters, scores)
 
 
+def type_guess(keyboard, guess: str) -> None:
+    '''
+    Type a guess into the web GUI wordle game
+    '''
+    for letter in guess:
+        keyboard.press(letter)
+        keyboard.release(letter)
+    keyboard.press(Key.enter)
+    keyboard.release(Key.enter)
+
+
 def main():
+    '''
+    Manual Tests
+    '''
     test_file_1 = './assets/test_img.png'
-    test_file_2 = './assets/test_img_2.png'
+    # test_file_2 = './assets/test_img_2.png'
     screen = read_image_from_file(test_file_1)
     # screen = get_screen(WORDLE_GAME_BOX_1080P)
     board = read_img_to_board(screen)
-    print(board.get_num_guesses())
+    print(board.get_guesses_num())
 
 
 if __name__ == '__main__':

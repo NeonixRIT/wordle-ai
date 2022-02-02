@@ -1,10 +1,11 @@
 '''
 Help a user solve a wordle from web GUI without doing it for them.
 '''
+import time
+
 import wordle
 import wordle_ai_utils
 import wordle_ai
-import time
 
 def help_solve_gui():
     '''
@@ -15,7 +16,7 @@ def help_solve_gui():
     time.sleep(1)
     guesses = 0
     possible_answers = [[], []]
-    print(f'Recommended first guess: {bot.get_starting_word()}')
+    print(f'Recommended first guess: {bot.get_next_guess()}')
     input('Press Enter after you\'ve made your first guess...')
     while score < 100 and guesses < wordle.MAX_GUESSES and len(possible_answers) > 1:
         try:
@@ -36,13 +37,19 @@ def help_solve_gui():
             print(f'Possible answers:\n{possible_answers}')
             guesses = board.get_guesses_num()
             input('Press Enter after you\'ve made your next guess...')
-        except AttributeError as e:
-            print(f'{wordle.RED}Error: {e}\nlikely because board was not found, or not in focus.{wordle.WHITE}')
+        except AttributeError as attr_e:
+            msg = f'{wordle.RED}Error: {attr_e}\n' \
+             + 'likely because board was not found, or not in focus.{wordle.WHITE}'
+            print(msg)
             time.sleep(3)
     time.sleep(1)
 
 
 def main():
+    '''
+    Help solve wordle from web GUI
+    Does not type/choose guesses automatically
+    '''
     help_solve_gui()
 
 

@@ -7,20 +7,26 @@ import functools
 import json
 import time
 
-import wordle
-import wordle_ai_utils
-
 import numpy as np
+import alive_progress as ap
+from pynput.keyboard import Controller
 
-from alive_progress import alive_bar
-from pynput.keyboard import Key, Controller
+import wordle as w
+import wordle_utils as wu
+import wordle_ai_utils as utils
 
-WORD_WEIGHTS_LETTER_PROB = json.loads(open('./assets/word_weights_letter_prob.json').read())
-WORD_WEIGHT_WINRATE = json.loads(open('./assets/word_weights_winrate.json').read())
+WORD_WEIGHTS_LETTER_PROB = None
+with open('./assets/word_weights_letter_prob.json', 'r', encoding='utf-8') as file:
+    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
+
+WORD_WEIGHT_WINRATE = None
+with open('./assets/word_weights_winrate.json', 'r', encoding='utf-8') as file:
+    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
+
 ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
 
 SCORE_THRESHOLD = 60
-GUESS_THRESHOLD = wordle.MAX_GUESSES - 1 
+GUESS_THRESHOLD = wu.MAX_GUESSES - 1
 WORDS_LEN_THRESHOLD = 3
 
 
@@ -28,10 +34,11 @@ class WordleAI():
     '''
     Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
     '''
-    __slots__ = ['__hints_dict', '__wordle', '__word_weights_dict', '__first_guess', '__next_guess', '__guesses', '__won', '__results', '__result_str', '__probability_distribution']
+    __slots__ = ['__hints_dict', '__wordle', '__word_weights_dict', '__next_guess',
+                 '__guesses', '__won', '__probability_distribution']
 
 
-    def __init__(self, wordle: wordle.Wordle, starting_word: str = 'proms') -> None:
+    def __init__(self, game: w.Wordle, starting_word: str = 'proms') -> None:
         self.__hints_dict = {
             # Letters in the word
             'INCLUDED': set(),
@@ -43,42 +50,49 @@ class WordleAI():
             'GUESSED': set()
         }
 
-        self.__wordle = wordle
+        self.__wordle = game
         self.__word_weights_dict = dict(WORD_WEIGHTS_LETTER_PROB)
-        self.__first_guess = starting_word
-        self.__next_guess = self.__first_guess
+        self.__next_guess = starting_word
         self.__guesses = 0
         self.__won = False
         weights = self.__word_weights_dict.values()
         self.__probability_distribution = np.array(list(weights)) / sum(weights)
 
 
-    def make_guess(self, raw_guess: str) -> wordle.Guess:
+    def make_guess(self, raw_guess: str) -> w.Guess:
         '''
         Make a guess on an internal Wordle game
         '''
         return self.__wordle.make_guess(raw_guess)
 
 
-    def read_report(self, guess: wordle.Guess) -> None:
+    def read_report(self, guess: w.Guess) -> None:
         '''
-        Read a guess's report and add letters to dict that will help solve for a word by removing invalid entries from the word list
+        Read a guess's report and add letters to dict that will help solve
+        for a word by removing invalid entries from the word list
         '''
         feedback = guess.get_feedback()
-        for i in range(len(feedback)):
-            letter, result = feedback[i]
-            if result == wordle.CORRECT_ALL: # If is correct letter and in correct position
+        for i, token in enumerate(feedback):
+            letter, result = token
+            # If is correct letter and in correct position
+            if result == wu.CORRECT_ALL:
                 self.__hints_dict['INCLUDED'].add(letter)
                 self.__hints_dict['CORRECT'].add((letter, i))
-                if letter in self.__hints_dict['EXCLUDED']: # Backwards check to make sure letter is not included and excluded at the same time
+                # Backwards check to make sure letter is not included and excluded at the same time
+                if letter in self.__hints_dict['EXCLUDED']:
                     self.__hints_dict['EXCLUDED'].remove(letter)
-            if result == wordle.CORRECT_LETTER: # If is correct letter but in the wrong position
+            # If is correct letter but in the wrong position
+            if result == wu.CORRECT_LETTER:
                 self.__hints_dict['INCLUDED'].add(letter)
                 self.__hints_dict['GUESSED'].add((letter, i))
-                if letter in self.__hints_dict['EXCLUDED']: # Backwards check to make sure letter is not included and excluded at the same time
+                # Backwards check to make sure letter is not included and excluded at the same time
+                if letter in self.__hints_dict['EXCLUDED']:
                     self.__hints_dict['EXCLUDED'].remove(letter)
-            if result == wordle.WRONG and letter not in self.__hints_dict['INCLUDED']: # If letter not in the word and hasn't already been marked as included
-                self.__hints_dict['GUESSED'].add((letter, i)) # Guesses with multiple letters will not put wrong repeated letters in EXCLUDED if answer only has 1 of said letter. This attempts to fix that
+             # If letter not in the word and hasn't already been marked as included
+            if result == wu.WRONG and letter not in self.__hints_dict['INCLUDED']:
+                # Guesses with multiple letters will not put wrong repeated letters in EXCLUDED
+                # if answer only has 1 of said letter. This attempts to fix that
+                self.__hints_dict['GUESSED'].add((letter, i))
                 self.__hints_dict['EXCLUDED'].add(letter)
 
 
@@ -87,7 +101,9 @@ class WordleAI():
         Remove words from words list that do not have correct letters in the correct index
         '''
         for letter, index in self.__hints_dict['CORRECT']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if word[index] == letter}
+            self.__word_weights_dict = {word: self.__word_weights_dict[word]
+                                        for word in self.__word_weights_dict.keys()
+                                        if word[index] == letter}
 
 
     def narrow_from_correct_letter(self):
@@ -95,7 +111,9 @@ class WordleAI():
         Remove words from words list that do not have a correct letter in it
         '''
         for letter in self.__hints_dict['INCLUDED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if letter in word}
+            self.__word_weights_dict = {word: self.__word_weights_dict[word]
+                                    for word in self.__word_weights_dict.keys()
+                                    if letter in word}
 
 
     def narrow_from_wrong_letter(self):
@@ -103,15 +121,20 @@ class WordleAI():
         Remove words from words list that have a wrong letter in it
         '''
         for letter in self.__hints_dict['EXCLUDED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if letter not in word}
+            self.__word_weights_dict = {word: self.__word_weights_dict[word]
+                                    for word in self.__word_weights_dict.keys()
+                                    if letter not in word}
 
 
     def narrow_from_correct_letters_pos_tried(self):
         '''
-        Remove words from words list that has correct letters in the wrong position that have already been tried
+        Remove words from words list that has correct letters
+        in the wrong position that have already been tried
         '''
         for letter, index in self.__hints_dict['GUESSED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word] for word in self.__word_weights_dict.keys() if word[index] != letter}
+            self.__word_weights_dict = {word: self.__word_weights_dict[word]
+                                    for word in self.__word_weights_dict.keys()
+                                    if word[index] != letter}
 
 
     def update_probability_distribution(self):
@@ -124,7 +147,9 @@ class WordleAI():
 
     def narrow_words(self) -> None:
         '''
-        Using a dict of all feedback gained from previous guesses, remove words and their weight from from their respective list so that the remaining words meet the criteria of the answer
+        Using a dict of all feedback gained from previous guesses, remove words and
+        their weight from from their respective list so that the remaining words meet
+        the criteria of the answer
         '''
         if self.__next_guess in self.__word_weights_dict:
             self.__word_weights_dict.pop(self.__next_guess)
@@ -137,7 +162,7 @@ class WordleAI():
 
     def find_unique_letters(self) -> set:
         '''
-        Find unique letters in the remaining words list, if common letters is empty, 
+        Find unique letters in the remaining words list, if common letters is empty,
         meaning all remaining words have letters in common but not in the same order,
         remove a word from remaining words list and try again
         '''
@@ -159,7 +184,7 @@ class WordleAI():
         for letter in unique_letters:
             words_left = [word for word in ALLOWED_FULL if letter in word]
             all_words_left.append(words_left)
-        
+
         words = functools.reduce(lambda x, y: set(x) & set(y), all_words_left)
         while not words:
             all_words_left.pop()
@@ -172,7 +197,7 @@ class WordleAI():
         Rebuild a weighted words dict with the unique words
         Choose a random word from the weighted words dict
         '''
-        common_word_weights = dict()
+        common_word_weights = {}
         for word in unique_words:
             common_word_weights[word] = WORD_WEIGHTS_LETTER_PROB[word]
         prob_dist = np.array(list(common_word_weights.values())) / sum(common_word_weights.values())
@@ -181,7 +206,8 @@ class WordleAI():
 
     def prioritize_unique_letters(self):
         '''
-        Choose a new word to guess that tries to eliminate a majority of the unique letters in the words remaining
+        Choose a new word to guess that tries to eliminate a majority of the unique letters
+        in the words remaining
         '''
         common_letters = self.find_unique_letters()
         words_with_common_letters = self.find_words_with_most_unique_letters(common_letters)
@@ -189,53 +215,71 @@ class WordleAI():
         return word
 
 
-    def type_guess(self, keyboard, guess: str) -> None:
+    def calc_next_guesses(self, score: int) -> str:
         '''
-        Type a guess into the web GUI wordle game
+        Find next guess based on score
         '''
-        for letter in guess:
-            keyboard.press(letter)
-            keyboard.release(letter)
-        keyboard.press(Key.enter)
-        keyboard.release(Key.enter)
+        guess = ''
+        # randomly choose next guess from a weighted list
+        word_list = list(self.__word_weights_dict.keys())
+        prob_dist = self.__probability_distribution
+        guess = np.random.choice(word_list, 1, False, prob_dist)[0]
+
+        # If there are guesses left and score is above a threshold and there
+        # are more word left then guesses prioritize removing unique letters
+        # over guessing a correct word
+        above_score_thresh = score >= SCORE_THRESHOLD
+        guesses_left = self.__guesses < GUESS_THRESHOLD
+        guessable = (wu.MAX_GUESSES - self.__guesses) >= len(self.__word_weights_dict)
+        if above_score_thresh and guesses_left and not guessable:
+            guess = self.prioritize_unique_letters()
+        return guess
 
 
     def run_web_gui(self) -> None:
         '''
-        Attempt to solve web GUI Wordle game by reading board state in from images and narrowing down word list from consecutive guesss' feedback
+        Attempt to solve web GUI Wordle game by reading board state in from images and
+        narrowing down word list from consecutive guesss' feedback
         '''
         keyboard = Controller()
         score = 0
         time.sleep(1)
-        while score < 100 and self.__guesses < wordle.MAX_GUESSES:
+        while score < 100 and self.__guesses < wu.MAX_GUESSES:
             try:
                 # check on game window
-                game_img = wordle_ai_utils.get_screen(wordle_ai_utils.WORDLE_GAME_BOX_1080P)
-                board = wordle_ai_utils.read_img_to_board(game_img)
+                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+                board = utils.read_img_to_board(game_img)
                 # make guess
-                self.type_guess(keyboard, self.__next_guess)
+                utils.type_guess(keyboard, self.__next_guess)
                 # wait for website animation to finish
                 time.sleep(3)
                 # update internal board from image
-                game_img = wordle_ai_utils.get_screen(wordle_ai_utils.WORDLE_GAME_BOX_1080P)
-                board = wordle_ai_utils.read_img_to_board(game_img)
+                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+                board = utils.read_img_to_board(game_img)
                 guess = board.get_guesses()[self.__guesses]
                 score = guess.get_score()
                 self.read_report(guess) # update hints dict from guess report
-                print(guess, score) 
-                    
+                print(guess, score)
+
                 if score >= 100: # if game is solved, end
                     break
-                
+
                 self.narrow_words() # remove invalid words from dictionary of possible words
                 self.__guesses += 1
                 # randomly choose next guess from a weighted list
-                self.__next_guess = np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
-                # If there are guesses left and score/remaining words are above a threshold prioritize removing unique letters over guessing a correct word
-                if score >= SCORE_THRESHOLD and self.__guesses < GUESS_THRESHOLD and len(self.__word_weights_dict) > WORDS_LEN_THRESHOLD:
+                self.__next_guess = self.get_sug_next_guesses()
+                # If there are guesses left and score is above a threshold and there
+                # are more word left then guesses prioritize removing unique letters
+                # over guessing a correct word
+                above_score_thresh = score >= SCORE_THRESHOLD
+                guesses_left = self.__guesses < GUESS_THRESHOLD
+                guessable = (wu.MAX_GUESSES - self.__guesses) >= len(self.__word_weights_dict)
+                if above_score_thresh and guesses_left and not guessable:
                     self.__next_guess = self.prioritize_unique_letters()
-            except AttributeError as e:
-                print(f'{wordle.RED}Error: {e}\nlikely because board was not found, or not in focus.{wordle.WHITE}')
+            except AttributeError as attr_e:
+                msg = f'{wu.RED}Error: {attr_e}\n' \
+                    + f'likely because board was not found, or not in focus.{wu.WHITE}'
+                print(msg)
                 time.sleep(3)
         time.sleep(1)
 
@@ -247,46 +291,53 @@ class WordleAI():
 
     def run_cli(self):
         '''
-        Attempt to solve CLI Wordle game by reading board state in from Wordle game and narrowing down word list from consecutive guesss' feedback
+        Attempt to solve CLI Wordle game by reading board state in from Wordle game and narrowing
+        down word list from consecutive guesss' feedback
         '''
         score = 0
-        while score < 100 and self.__guesses < wordle.MAX_GUESSES:
+        while score < 100 and self.__guesses < wu.MAX_GUESSES:
             guess = self.make_guess(self.__next_guess)
             score = guess.get_score()
             self.read_report(guess) # update hints dict from guess report
-            
+
             if score >= 100: # if game is solved, end
                 break
-            
+
             self.narrow_words() # remove invalid words from dictionary of possible words
             self.__guesses += 1
-            # randomly choose next guess from a weighted list
-            self.__next_guess = np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
-            # If there are guesses left and score/remaining words are above a threshold prioritize removing unique letters over guessing a correct word
-            if score >= SCORE_THRESHOLD and self.__guesses < GUESS_THRESHOLD and len(self.__word_weights_dict) > WORDS_LEN_THRESHOLD:
-                self.__next_guess = self.prioritize_unique_letters()
-        
+            self.__next_guess = self.calc_next_guesses(score)
+
         if score == 100:
             self.__won = True
 
         return self.__won
 
 
-    def get_remaining_words(self) -> list: return list(self.__word_weights_dict.keys())
-    def get_starting_word(self) -> str: return self.__first_guess
-    def get_sug_next_guesses(self) -> str: return np.random.choice(list(self.__word_weights_dict.keys()), 1, False, self.__probability_distribution)[0]
+    def get_remaining_words(self) -> list:
+        '''
+        Get list of remaining words from words weight dict
+        '''
+        return list(self.__word_weights_dict.keys())
+
+
+    def get_next_guess(self) -> str:
+        '''
+        Return current next guess
+        '''
+        return self.__next_guess
 
 
 def test_winrate():
     '''
-    Run multiple iterations to get a rough guess of the AI's winrate, usually run between various changes to find optimal values
+    Run multiple iterations to get a rough guess of the AI's winrate,
+    usually run between various changes to find optimal values
     '''
     wins = 0
     loses = 0
-    iterations = 10000
-    with alive_bar(iterations) as bar:
+    iterations = 100000
+    with ap.alive_bar(iterations) as prog_bar:
         for _ in range(iterations):
-            game = wordle.Wordle()
+            game = w.Wordle()
             bot = WordleAI(game)
             result = bot.run_cli()
             if result:
@@ -296,7 +347,7 @@ def test_winrate():
                 # print(f'Loss: {loses}')
                 # print(game.get_answer())
                 # print(game)
-            bar()
+            prog_bar()
         print(f'Wins: {wins}')
         print(f'Loses: {loses}')
         print(f'Win rate: {round((wins / iterations) * 100, 2)}%')
@@ -307,14 +358,14 @@ def web_solver():
     '''
     Solve a wordle game via web GUI
     '''
-    game = wordle.Wordle()
+    game = w.Wordle()
     bot = WordleAI(game)
     bot.run_web_gui()
 
 
 def cli_solver():
     '''Solve a wordle game via CLI'''
-    game = wordle.Wordle()
+    game = w.Wordle()
     print(game.get_answer())
     bot = WordleAI(game)
     bot.run_cli()
@@ -328,7 +379,6 @@ def main():
     # web_solver()
     # test_winrate()
     cli_solver()
-    return
 
 
 if __name__ == '__main__':
