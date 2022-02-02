@@ -44,7 +44,7 @@ for pos in '12345':
     NEW_WORDS = list()
     for word in WORDS:
         mustMatch = CONDITIONS[pos]
-        if mustMatch == '' or word[int(pos)-1] == mustMatch:
+        if mustMatch == '' or word[int(pos) - 1] == mustMatch:
             NEW_WORDS.append(word)
     WORDS = NEW_WORDS
 
