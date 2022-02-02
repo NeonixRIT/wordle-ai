@@ -27,7 +27,7 @@ def help_solve_gui():
             score = guess.get_score()
             bot.read_report(guess)
             bot.narrow_words()
-            sug_next_guess = bot.get_next_guesses()
+            sug_next_guess = bot.get_sug_next_guesses()
             possible_answers = bot.get_remaining_words()
             print('\n')
             print(board)
