@@ -1,8 +1,6 @@
 '''
 Helper functions used by Wordle
 '''
-import os
-
 # Colours used in output
 RED = '\033[1;31m'
 GREEN = '\033[1;32m'
@@ -34,10 +32,7 @@ def clear_screen():
     '''
     Clear terminal based on operating system
     '''
-    if os.name == 'nt':
-        os.system('cls')
-    else:
-        os.system('clear')
+    print(chr(27) + "[2J")
 
 
 def values_from_result(result: list[str, int]) -> tuple:
