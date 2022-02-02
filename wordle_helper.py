@@ -3,7 +3,7 @@ Help a user solve a wordle from web GUI without doing it for them.
 '''
 import time
 
-import wordle
+import wordle_utils
 import wordle_ai_utils
 import wordle_ai
 
@@ -18,7 +18,8 @@ def help_solve_gui():
     possible_answers = [[], []]
     print(f'Recommended first guess: {bot.get_next_guess()}')
     input('Press Enter after you\'ve made your first guess...')
-    while score < 100 and guesses < wordle.MAX_GUESSES and len(possible_answers) > 1:
+    while score < 100 and guesses < wordle_utils.MAX_GUESSES and len(possible_answers) > 1:
+        time.sleep(1)
         try:
             # wait for player to make guess
             # update internal board from image
@@ -28,7 +29,7 @@ def help_solve_gui():
             score = guess.get_score()
             bot.read_report(guess)
             bot.narrow_words()
-            sug_next_guess = bot.get_sug_next_guesses()
+            sug_next_guess = bot.calc_next_guesses(score)
             possible_answers = bot.get_remaining_words()
             print('\n')
             print(board)
@@ -38,8 +39,8 @@ def help_solve_gui():
             guesses = board.get_guesses_num()
             input('Press Enter after you\'ve made your next guess...')
         except AttributeError as attr_e:
-            msg = f'{wordle.RED}Error: {attr_e}\n' \
-             + 'likely because board was not found, or not in focus.{wordle.WHITE}'
+            msg = f'{wordle_utils.RED}Error: {attr_e}\n' \
+             + f'likely because board was not found, or not in focus.{wordle_utils.WHITE}'
             print(msg)
             time.sleep(3)
     time.sleep(1)

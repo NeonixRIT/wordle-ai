@@ -4,7 +4,6 @@ Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
 Author: Kamron Cole kjc8084@rit.edu
 '''
 import functools
-import json
 import time
 
 import numpy as np
@@ -14,20 +13,6 @@ from pynput.keyboard import Controller
 import wordle as w
 import wordle_utils as wu
 import wordle_ai_utils as utils
-
-WORD_WEIGHTS_LETTER_PROB = None
-with open('./assets/word_weights_letter_prob.json', 'r', encoding='utf-8') as file:
-    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
-
-WORD_WEIGHT_WINRATE = None
-with open('./assets/word_weights_winrate.json', 'r', encoding='utf-8') as file:
-    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
-
-ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
-
-SCORE_THRESHOLD = 60
-GUESS_THRESHOLD = wu.MAX_GUESSES - 1
-WORDS_LEN_THRESHOLD = 3
 
 
 class WordleAI():
@@ -51,7 +36,7 @@ class WordleAI():
         }
 
         self.__wordle = game
-        self.__word_weights_dict = dict(WORD_WEIGHTS_LETTER_PROB)
+        self.__word_weights_dict = dict(utils.WORD_WEIGHTS_LETTER_PROB)
         self.__next_guess = starting_word
         self.__guesses = 0
         self.__won = False
@@ -174,44 +159,14 @@ class WordleAI():
         return common_letters
 
 
-    def find_words_with_most_unique_letters(self, unique_letters: set) -> set:
-        '''
-        Find set of words that have the unique letters in common,
-        if no word exists with all unique letter in common,
-        remove a unique letter and try again
-        '''
-        all_words_left = []
-        for letter in unique_letters:
-            words_left = [word for word in ALLOWED_FULL if letter in word]
-            all_words_left.append(words_left)
-
-        words = functools.reduce(lambda x, y: set(x) & set(y), all_words_left)
-        while not words:
-            all_words_left.pop()
-            words = functools.reduce(lambda x, y: set(x) & set(y), all_words_left)
-        return words
-
-
-    def choose_word_from_unique_words(self, unique_words: set) -> str:
-        '''
-        Rebuild a weighted words dict with the unique words
-        Choose a random word from the weighted words dict
-        '''
-        common_word_weights = {}
-        for word in unique_words:
-            common_word_weights[word] = WORD_WEIGHTS_LETTER_PROB[word]
-        prob_dist = np.array(list(common_word_weights.values())) / sum(common_word_weights.values())
-        return np.random.choice(list(common_word_weights.keys()), 1, False, prob_dist)[0]
-
-
     def prioritize_unique_letters(self):
         '''
         Choose a new word to guess that tries to eliminate a majority of the unique letters
         in the words remaining
         '''
         common_letters = self.find_unique_letters()
-        words_with_common_letters = self.find_words_with_most_unique_letters(common_letters)
-        word = self.choose_word_from_unique_words(words_with_common_letters)
+        words_with_common_letters = utils.find_words_with_most_unique_letters(common_letters)
+        word = utils.choose_word_from_unique_words(words_with_common_letters)
         return word
 
 
@@ -228,8 +183,8 @@ class WordleAI():
         # If there are guesses left and score is above a threshold and there
         # are more word left then guesses prioritize removing unique letters
         # over guessing a correct word
-        above_score_thresh = score >= SCORE_THRESHOLD
-        guesses_left = self.__guesses < GUESS_THRESHOLD
+        above_score_thresh = score >= utils.SCORE_THRESHOLD
+        guesses_left = self.__guesses < utils.GUESS_THRESHOLD
         guessable = (wu.MAX_GUESSES - self.__guesses) >= len(self.__word_weights_dict)
         if above_score_thresh and guesses_left and not guessable:
             guess = self.prioritize_unique_letters()
@@ -266,16 +221,7 @@ class WordleAI():
 
                 self.narrow_words() # remove invalid words from dictionary of possible words
                 self.__guesses += 1
-                # randomly choose next guess from a weighted list
-                self.__next_guess = self.get_sug_next_guesses()
-                # If there are guesses left and score is above a threshold and there
-                # are more word left then guesses prioritize removing unique letters
-                # over guessing a correct word
-                above_score_thresh = score >= SCORE_THRESHOLD
-                guesses_left = self.__guesses < GUESS_THRESHOLD
-                guessable = (wu.MAX_GUESSES - self.__guesses) >= len(self.__word_weights_dict)
-                if above_score_thresh and guesses_left and not guessable:
-                    self.__next_guess = self.prioritize_unique_letters()
+                self.__next_guess = self.calc_next_guesses(score)
             except AttributeError as attr_e:
                 msg = f'{wu.RED}Error: {attr_e}\n' \
                     + f'likely because board was not found, or not in focus.{wu.WHITE}'
@@ -344,9 +290,9 @@ def test_winrate():
                 wins += 1
             else:
                 loses += 1
-                # print(f'Loss: {loses}')
-                # print(game.get_answer())
-                # print(game)
+                print(f'Loss: {loses}')
+                print(game.get_answer())
+                print(game)
             prog_bar()
         print(f'Wins: {wins}')
         print(f'Loses: {loses}')

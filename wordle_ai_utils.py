@@ -3,6 +3,9 @@ Common tasks wordle_ai needs to reads image of Wordle board into a workable boar
 
 Author: Kamron Cole kjc8084@rit.edu
 '''
+import functools
+import json
+
 from PIL import ImageGrab
 from pynput.keyboard import Key
 
@@ -42,6 +45,21 @@ SCORE_TO_COLOR = {
 # Game variables
 MAX_ROWS = utils.MAX_GUESSES
 MAX_COLS = utils.WORD_LEN
+
+
+WORD_WEIGHTS_LETTER_PROB = None
+with open('./assets/word_weights_letter_prob.json', 'r', encoding='utf-8') as file:
+    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
+
+WORD_WEIGHT_WINRATE = None
+with open('./assets/word_weights_winrate.json', 'r', encoding='utf-8') as file:
+    WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
+
+ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
+
+SCORE_THRESHOLD = 60
+GUESS_THRESHOLD = utils.MAX_GUESSES - 1
+WORDS_LEN_THRESHOLD = 3
 
 
 def get_screen(bbox: list, color_space: int = cv2.COLOR_BGR2RGB) -> np.ndarray:
@@ -219,6 +237,35 @@ def type_guess(keyboard, guess: str) -> None:
         keyboard.release(letter)
     keyboard.press(Key.enter)
     keyboard.release(Key.enter)
+
+
+def find_words_with_most_unique_letters(unique_letters: set) -> set:
+    '''
+    Find set of words that have the unique letters in common,
+    if no word exists with all unique letter in common,
+    remove a unique letter and try again
+    '''
+    all_words_left = []
+    for letter in unique_letters:
+        words_left = [word for word in ALLOWED_FULL if letter in word]
+        all_words_left.append(words_left)
+    words = functools.reduce(lambda x, y: set(x) & set(y), all_words_left)
+    while not words:
+        all_words_left.pop()
+        words = functools.reduce(lambda x, y: set(x) & set(y), all_words_left)
+    return words
+
+
+def choose_word_from_unique_words(unique_words: set) -> str:
+    '''
+    Rebuild a weighted words dict with the unique words
+    Choose a random word from the weighted words dict
+    '''
+    common_word_weights = {}
+    for word in unique_words:
+        common_word_weights[word] = WORD_WEIGHTS_LETTER_PROB[word]
+    prob_dist = np.array(list(common_word_weights.values())) / sum(common_word_weights.values())
+    return np.random.choice(list(common_word_weights.keys()), 1, False, prob_dist)[0]
 
 
 def main():
