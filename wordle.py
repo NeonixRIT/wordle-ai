@@ -13,19 +13,6 @@ GREEN = '\033[1;32m'
 WHITE = '\033[0m'
 YELLOW = '\033[1;33m'
 
-# Numerical values too handle guess results easier
-MAX_SCORE = 100 # Correct guess score
-CORRECT_ALL = 20 # correct letter and position.
-CORRECT_LETTER = 10 # correct letter wrong position.
-WRONG = 0 # Wrong letter and position.
-
-# Assign colour to guess result
-GUESS_RESULT_DICT = {
-    CORRECT_ALL: GREEN,
-    CORRECT_LETTER: YELLOW,
-    WRONG: WHITE
-}
-
 # Game Constants
 WORD_LEN = 5
 MAX_GUESSES = 6
@@ -36,6 +23,18 @@ POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-answers.txt'
 ALLOWED_WORDS = sorted([word.strip() for word in open(ALLOWED_GUESSES_PATH).readlines()]) # Possible guesses including answers
 WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()]) # Possible answers
 
+# Numerical values too handle guess results easier
+CORRECT_ALL = 20 # correct letter and position.
+CORRECT_LETTER = 10 # correct letter wrong position.
+WRONG = 0 # Wrong letter and position.
+MAX_SCORE = CORRECT_ALL * WORD_LEN # Correct guess score
+
+# Assign colour to guess result
+GUESS_RESULT_DICT = {
+    CORRECT_ALL: GREEN,
+    CORRECT_LETTER: YELLOW,
+    WRONG: WHITE
+}
 
 class Guess:
     '''
