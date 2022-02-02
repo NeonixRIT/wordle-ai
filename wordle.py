@@ -14,6 +14,7 @@ WHITE = '\033[0m'
 YELLOW = '\033[1;33m'
 
 # Numerical values too handle guess results easier
+MAX_SCORE = 100 # Correct guess score
 CORRECT_ALL = 20 # correct letter and position.
 CORRECT_LETTER = 10 # correct letter wrong position.
 WRONG = 0 # Wrong letter and position.
@@ -136,7 +137,7 @@ class Guess:
 
 
     def get_feedback(self) -> list: return self.__feedback
-    def is_answer(self) -> bool: return self.__guess == self.__answer
+    def is_answer(self) -> bool: return self.__score == MAX_SCORE
     def get_score(self) -> int: return self.__score
     def get_guess_raw(self) -> str: return self.__guess
         
