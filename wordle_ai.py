@@ -27,7 +27,7 @@ class WordleAI():
         self.__hints_dict = {
             # Letters in the word
             'INCLUDED': set(),
-             # Letters not in the word
+            # Letters not in the word
             'EXCLUDED': set(),
             # Where included letters belong
             'CORRECT': set(),
@@ -73,7 +73,7 @@ class WordleAI():
                 # Backwards check to make sure letter is not included and excluded at the same time
                 if letter in self.__hints_dict['EXCLUDED']:
                     self.__hints_dict['EXCLUDED'].remove(letter)
-             # If letter not in the word and hasn't already been marked as included
+            # If letter not in the word and hasn't already been marked as included
             if result == wu.WRONG and letter not in self.__hints_dict['INCLUDED']:
                 # Guesses with multiple letters will not put wrong repeated letters in EXCLUDED
                 # if answer only has 1 of said letter. This attempts to fix that
@@ -97,8 +97,8 @@ class WordleAI():
         '''
         for letter in self.__hints_dict['INCLUDED']:
             self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                    for word in self.__word_weights_dict.keys()
-                                    if letter in word}
+                                        for word in self.__word_weights_dict.keys()
+                                        if letter in word}
 
 
     def narrow_from_wrong_letter(self):
@@ -107,8 +107,8 @@ class WordleAI():
         '''
         for letter in self.__hints_dict['EXCLUDED']:
             self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                    for word in self.__word_weights_dict.keys()
-                                    if letter not in word}
+                                        for word in self.__word_weights_dict.keys()
+                                        if letter not in word}
 
 
     def narrow_from_correct_letters_pos_tried(self):
@@ -118,8 +118,8 @@ class WordleAI():
         '''
         for letter, index in self.__hints_dict['GUESSED']:
             self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                    for word in self.__word_weights_dict.keys()
-                                    if word[index] != letter}
+                                        for word in self.__word_weights_dict.keys()
+                                        if word[index] != letter}
 
 
     def update_probability_distribution(self):

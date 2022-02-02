@@ -88,7 +88,7 @@ class Guess:
                 utils.remove_flag_from_dict(flag, result, self.__answer_dict)
                 result.append(item)
                 self.__score += utils.CORRECT_ALL
-                 # remove already used letter index from dictionary
+                # remove already used letter index from dictionary
                 self.__answer_dict[letter].remove(i)
             # if letter in word but not in correct position
             elif letter in self.__answer_dict and len(self.__answer_dict[letter]) > 0:
@@ -200,7 +200,7 @@ class Wordle:
     __slots__ = ['__allowed_words', '__words', '__answer', '__guesses', '__board']
 
 
-    def __init__(self, answer = None):
+    def __init__(self, answer=None):
         self.__board = Board()
         self.__allowed_words = ALLOWED_WORDS
         self.__words = WORDS

@@ -94,7 +94,7 @@ def combine_horizontally_bw(images: list[np.ndarray], padding: int = 0) -> np.nd
         total_width += image_width
     # make empty array that will contain combined image
     final_image = np.zeros((max_height, (len(images) - 1) * padding + total_width),
-                           dtype = np.uint8)
+                           dtype=np.uint8)
     current_x = 0
     # combine images
     for image in images:
@@ -138,7 +138,7 @@ def get_columns(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
     Split image of Wordle game board into separate columns, cropping them horizontally,
     and return a list of images by column
     '''
-    return [image[:,calc_col_x_begin(i, crop_padding):calc_col_x_end(i, crop_padding)]
+    return [image[:, calc_col_x_begin(i, crop_padding):calc_col_x_end(i, crop_padding)]
             for i in range(MAX_COLS)]
 
 
@@ -164,7 +164,7 @@ def get_words(screen: np.ndarray) -> list[str]:
     return [list(word) for word in text.lower().split('\n')[:-1]]
 
 
-def colors_equal(c_1: list, c_2: list, threshold:int = 1) -> bool:
+def colors_equal(c_1: list, c_2: list, threshold: int = 1) -> bool:
     '''
     Check if bgr colors are equal within a sertain threshold of each other
     '''
@@ -201,7 +201,7 @@ def remove_black_and_invert(image: np.ndarray) -> np.ndarray:
     thresh1 = cv2.threshold(sat, 92, 255, cv2.THRESH_BINARY)[1]
     thresh2 = cv2.threshold(val, 128, 255, cv2.THRESH_BINARY)[1]
     thresh2 = 255 - thresh2
-    mask = cv2.add(thresh1,thresh2)
+    mask = cv2.add(thresh1, thresh2)
     return mask
 
 

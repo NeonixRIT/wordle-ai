@@ -7,6 +7,7 @@ import wordle_utils
 import wordle_ai_utils
 import wordle_ai
 
+
 def help_solve_gui():
     '''
     Helps a user solve a wordle from web GUI without doing it for them.
@@ -40,7 +41,7 @@ def help_solve_gui():
             input('Press Enter after you\'ve made your next guess...')
         except AttributeError as attr_e:
             msg = f'{wordle_utils.RED}Error: {attr_e}\n' \
-             + f'likely because board was not found, or not in focus.{wordle_utils.WHITE}'
+                + f'likely because board was not found, or not in focus.{wordle_utils.WHITE}'
             print(msg)
             time.sleep(3)
     time.sleep(1)

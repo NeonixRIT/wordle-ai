@@ -40,7 +40,7 @@ def clear_screen():
         os.system('clear')
 
 
-def values_from_result(result:list[str, int]) -> tuple:
+def values_from_result(result: list[str, int]) -> tuple:
     '''
     Get raw guess word and score of a guess from result list
     '''
