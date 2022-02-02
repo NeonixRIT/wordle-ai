@@ -326,8 +326,8 @@ def main():
     Main
     '''
     # web_solver()
-    test_winrate()
-    # cli_solver()
+    # test_winrate()
+    cli_solver()
     return
 
 
