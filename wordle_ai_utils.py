@@ -228,6 +228,22 @@ def read_img_to_board(image: np.ndarray) -> wordle.Board:
     return make_game_board(letters, scores)
 
 
+def is_junk(word, hints_dict):
+    for letter, index in hints_dict['CORRECT']:
+        if word[index] != letter:
+            return True
+    for letter in hints_dict['INCLUDED']:
+        if letter not in word:
+            return True
+    for letter in hints_dict['EXCLUDED']:
+        if letter in word:
+            return True
+    for letter, index in hints_dict['GUESSED']:
+        if word[index] == letter:
+            return True
+    return False
+
+
 def type_guess(keyboard, guess: str) -> None:
     '''
     Type a guess into the web GUI wordle game

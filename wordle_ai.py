@@ -81,47 +81,6 @@ class WordleAI():
                 self.__hints_dict['EXCLUDED'].add(letter)
 
 
-    def narrow_from_correct_all(self):
-        '''
-        Remove words from words list that do not have correct letters in the correct index
-        '''
-        for letter, index in self.__hints_dict['CORRECT']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                        for word in self.__word_weights_dict.keys()
-                                        if word[index] == letter}
-
-
-    def narrow_from_correct_letter(self):
-        '''
-        Remove words from words list that do not have a correct letter in it
-        '''
-        for letter in self.__hints_dict['INCLUDED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                        for word in self.__word_weights_dict.keys()
-                                        if letter in word}
-
-
-    def narrow_from_wrong_letter(self):
-        '''
-        Remove words from words list that have a wrong letter in it
-        '''
-        for letter in self.__hints_dict['EXCLUDED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                        for word in self.__word_weights_dict.keys()
-                                        if letter not in word}
-
-
-    def narrow_from_correct_letters_pos_tried(self):
-        '''
-        Remove words from words list that has correct letters
-        in the wrong position that have already been tried
-        '''
-        for letter, index in self.__hints_dict['GUESSED']:
-            self.__word_weights_dict = {word: self.__word_weights_dict[word]
-                                        for word in self.__word_weights_dict.keys()
-                                        if word[index] != letter}
-
-
     def update_probability_distribution(self):
         '''
         Update probablility distribution after words list has been narrowed
@@ -138,10 +97,11 @@ class WordleAI():
         '''
         if self.__next_guess in self.__word_weights_dict:
             self.__word_weights_dict.pop(self.__next_guess)
-        self.narrow_from_correct_all()
-        self.narrow_from_correct_letter()
-        self.narrow_from_correct_letters_pos_tried()
-        self.narrow_from_wrong_letter()
+
+        self.__word_weights_dict = {word: self.__word_weights_dict[word]
+                                    for word in self.__word_weights_dict.keys()
+                                    if not utils.is_junk(word, self.__hints_dict)}
+
         self.update_probability_distribution()
 
 
