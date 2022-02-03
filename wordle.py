@@ -252,8 +252,8 @@ class Wordle:
             if guess.is_answer():
                 utils.clear_screen()
                 print(self.__board)
-                print(f'{utils.GREEN}Congratulations! {self.__guesses}/ \
-                      {utils.MAX_GUESSES}{utils.WHITE}')
+                win_sufix = f'{utils.MAX_GUESSES}{utils.WHITE}'
+                print(f'{utils.GREEN}Congratulations! {self.__guesses}/{win_sufix}')
                 return
 
             utils.clear_screen()
@@ -282,7 +282,6 @@ def main():
     Play a Wordle game
     '''
     game = Wordle()
-    print(game.get_answer())
     game.play()
 
 
