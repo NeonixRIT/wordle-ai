@@ -20,10 +20,10 @@ class WordleAI():
     Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
     '''
     __slots__ = ['__hints_dict', '__wordle', '__word_weights_dict', '__next_guess',
-                 '__guesses', '__won', '__probability_distribution']
+                 '__guesses', '__verbose', '__probability_distribution']
 
 
-    def __init__(self, game: w.Wordle, starting_word: str = 'proms') -> None:
+    def __init__(self, game: w.Wordle, starting_word: str = 'proms', verbose = True) -> None:
         self.__hints_dict = {
             # Letters in the word
             'INCLUDED': set(),
@@ -39,9 +39,9 @@ class WordleAI():
         self.__word_weights_dict = dict(utils.WORD_WEIGHTS_LETTER_PROB)
         self.__next_guess = starting_word
         self.__guesses = 0
-        self.__won = False
         weights = self.__word_weights_dict.values()
         self.__probability_distribution = np.array(list(weights)) / sum(weights)
+        self.__verbose = verbose
 
 
     def make_guess(self, raw_guess: str) -> w.Guess:
@@ -159,6 +159,13 @@ class WordleAI():
         keyboard = Controller()
         score = 0
         time.sleep(1)
+
+        if self.__verbose:
+            guess_col = 'Guess'.ljust(16)
+            score_col = 'Score'.ljust(6)
+            words_remain_len = 'Remaining Words'
+            print(guess_col, score_col, words_remain_len, sep='')
+
         while score < 100 and self.__guesses < wu.MAX_GUESSES:
             try:
                 # check on game window
@@ -174,10 +181,12 @@ class WordleAI():
                 guess = board.get_guesses()[self.__guesses]
                 score = guess.get_score()
                 self.read_report(guess) # update hints dict from guess report
-                print(guess, score)
+
+                if self.__verbose: 
+                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
 
                 if score >= 100: # if game is solved, end
-                    break
+                    return True
 
                 self.narrow_words() # remove invalid words from dictionary of possible words
                 self.__guesses += 1
@@ -188,11 +197,7 @@ class WordleAI():
                 print(msg)
                 time.sleep(3)
         time.sleep(1)
-
-        if score == 100:
-            self.__won = True
-
-        return self.__won
+        return False
 
 
     def run_cli(self):
@@ -201,22 +206,28 @@ class WordleAI():
         down word list from consecutive guesss' feedback
         '''
         score = 0
+
+        if self.__verbose:
+            guess_col = 'Guess'.ljust(16)
+            score_col = 'Score'.ljust(6)
+            words_remain_len = 'Remaining Words'
+            print(guess_col, score_col, words_remain_len, sep='')
+
         while score < 100 and self.__guesses < wu.MAX_GUESSES:
             guess = self.make_guess(self.__next_guess)
             score = guess.get_score()
             self.read_report(guess) # update hints dict from guess report
 
+            if self.__verbose:
+                print(guess, str(score).ljust(5), len(self.__word_weights_dict))
+
             if score >= 100: # if game is solved, end
-                break
+                return True
 
             self.narrow_words() # remove invalid words from dictionary of possible words
             self.__guesses += 1
             self.__next_guess = self.calc_next_guesses(score)
-
-        if score == 100:
-            self.__won = True
-
-        return self.__won
+        return False
 
 
     def get_remaining_words(self) -> list:
@@ -244,15 +255,12 @@ def test_winrate():
     with ap.alive_bar(iterations) as prog_bar:
         for _ in range(iterations):
             game = w.Wordle()
-            bot = WordleAI(game)
+            bot = WordleAI(game, verbose=False)
             result = bot.run_cli()
             if result:
                 wins += 1
             else:
                 loses += 1
-                print(f'Loss: {loses}')
-                print(game.get_answer())
-                print(game)
             prog_bar()
         print(f'Wins: {wins}')
         print(f'Loses: {loses}')
@@ -272,10 +280,9 @@ def web_solver():
 def cli_solver():
     '''Solve a wordle game via CLI'''
     game = w.Wordle()
-    print(game.get_answer())
+    print(f'Answer: {game.get_answer()}')
     bot = WordleAI(game)
     bot.run_cli()
-    print(game)
 
 
 def main():
