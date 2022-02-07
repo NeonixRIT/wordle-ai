@@ -87,7 +87,6 @@ class Guess:
                 # change previous entry of same letter to proper value
                 utils.remove_flag_from_dict(flag, result, self.__answer_dict)
                 result.append(item)
-                self.__score += utils.CORRECT_ALL
                 # remove already used letter index from dictionary
                 self.__answer_dict[letter].remove(i)
             # if letter in word but not in correct position
@@ -96,10 +95,9 @@ class Guess:
                 # change previous entry of same letter to proper value
                 utils.remove_flag_from_dict(flag, result, self.__answer_dict)
                 result.append(flag)
-                self.__score += utils.CORRECT_LETTER
             else: # letter not in word
                 result.append([letter, utils.WRONG])
-                self.__score += utils.WRONG
+        self.__score = sum([score[1] for score in result])
         return result
 
 
