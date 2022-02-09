@@ -8,7 +8,8 @@ import time
 
 import numpy as np
 import alive_progress as ap
-from pynput.keyboard import Controller
+from pynput.keyboard import Controller as K_CON
+from pynput.mouse import Controller as M_CON
 
 import wordle as w
 import wordle_utils as wu
@@ -156,7 +157,7 @@ class WordleAI():
         Attempt to solve web GUI Wordle game by reading board state in from images and
         narrowing down word list from consecutive guesss' feedback
         '''
-        keyboard = Controller()
+        keyboard = K_CON()
         score = 0
         time.sleep(1)
 
@@ -196,6 +197,100 @@ class WordleAI():
                     + f'likely because board was not found, or not in focus.{wu.WHITE}'
                 print(msg)
                 time.sleep(3)
+        time.sleep(1)
+        return False
+    
+    
+    def test_word_unlimited(self) -> None:
+        keyboard = K_CON()
+        mouse = M_CON()
+        try:
+            # check on game window
+            game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+            game_img, done = utils.unlimited_state_handle(game_img, mouse, keyboard)
+            board = utils.read_img_to_board(game_img)
+            if done:
+                raise AttributeError
+            
+            # make guess
+            utils.type_guess(keyboard, self.__next_guess)
+            # wait for website animation to finish
+            time.sleep(2)
+            # update internal board from image
+            game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+            game_img, done = utils.unlimited_state_handle(game_img, mouse, keyboard)
+            board = utils.read_img_to_board(game_img)
+            if done:
+                raise AttributeError
+            guess = board.get_guesses()[self.__guesses]
+            score = guess.get_score()
+            self.read_report(guess) # update hints dict from guess report
+            from pynput.keyboard import Key
+            keyboard.press(Key.f5)
+            time.sleep(2)
+        except AttributeError as attr_e:
+            from pynput.keyboard import Key
+            keyboard.press(Key.f5)
+            time.sleep(2)
+            raise attr_e
+
+
+    def run_web_gui_unlimited(self) -> None:
+        '''
+        Attempt to solve web GUI Wordle Unlimited game by reading board state in 
+        from images and narrowing down word list from consecutive guesss' feedback
+        '''
+        keyboard = K_CON()
+        mouse = M_CON()
+        score = 0
+        time.sleep(3)
+        if self.__verbose:
+            guess_col = 'Guess'.ljust(16)
+            score_col = 'Score'.ljust(6)
+            words_remain_len = 'Remaining Words'
+            print(guess_col, score_col, words_remain_len, sep='')
+
+        while score < 100 and self.__guesses < wu.MAX_GUESSES:
+            try:
+                # check on game window
+                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+                game_img, done = utils.unlimited_state_handle(game_img, mouse)
+                board = utils.read_img_to_board(game_img)
+                if done:
+                    guess = board.get_guesses()[self.__guesses]
+                    score = guess.get_score()
+                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
+                    break
+                # make guess
+                utils.type_guess(keyboard, self.__next_guess)
+                # wait for website animation to finish
+                time.sleep(1.5)
+                # update internal board from image
+                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
+                game_img, done = utils.unlimited_state_handle(game_img, mouse)
+                board = utils.read_img_to_board(game_img)
+                if done:
+                    guess = board.get_guesses()[self.__guesses]
+                    score = guess.get_score()
+                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
+                    break
+
+                guess = board.get_guesses()[self.__guesses]
+                score = guess.get_score()
+                self.read_report(guess) # update hints dict from guess report
+
+                if self.__verbose: 
+                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
+
+                if score >= 100: # if game is solved, end
+                    return True
+
+                self.narrow_words() # remove invalid words from dictionary of possible words
+                self.__guesses += 1
+                self.__next_guess = self.calc_next_guesses(score)
+            except AttributeError:
+                time.sleep(1)
+            utils.type_next_game(keyboard)
         time.sleep(1)
         return False
 
@@ -268,6 +363,18 @@ def test_winrate():
         print(f'Loss rate: {round((loses / iterations) * 100, 2)}%')
 
 
+def unlimited_solver(runs):
+    '''
+    Solve a wordle game via web GUI
+    '''
+    utils.enable_unlimited()
+    for _ in range(runs):
+        game = w.Wordle()
+        bot = WordleAI(game)
+        bot.run_web_gui_unlimited()
+        print()
+
+
 def web_solver():
     '''
     Solve a wordle game via web GUI
@@ -291,7 +398,8 @@ def main():
     '''
     # web_solver()
     # test_winrate()
-    cli_solver()
+    # cli_solver()
+    unlimited_solver(2)
 
 
 if __name__ == '__main__':

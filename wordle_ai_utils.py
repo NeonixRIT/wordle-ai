@@ -5,9 +5,11 @@ Author: Kamron Cole kjc8084@rit.edu
 '''
 import functools
 import json
+import time
 
 from PIL import ImageGrab
 from pynput.keyboard import Key
+from pynput.mouse import Button
 
 import numpy as np
 
@@ -20,7 +22,7 @@ import wordle_utils as utils
 # Uncomment below line and change path if tesseract.exe is not on your PATH
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Game board location and spacing variables
+# Game board location and spacing variables for normal Wordle
 TOP = 291
 BOTTOM = 691
 LEFT = 795
@@ -60,6 +62,57 @@ ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
 SCORE_THRESHOLD = 60
 GUESS_THRESHOLD = utils.MAX_GUESSES - 1
 WORDS_LEN_THRESHOLD = 3
+
+
+def enable_unlimited():
+    '''
+    Change constants to support wordle unlimited
+    '''
+    global TOP
+    global BOTTOM
+    global LEFT
+    global RIGHT
+    global WORDLE_GAME_BOX_1080P
+    global COL_WIDTH
+    global ROW_HIGHT
+    global PADDING
+
+    global PADDING_COLOR
+    global CORRECT_ALL_COLOR
+    global CORRECT_LETTER_COLOR
+    global WRONG_COLOR
+
+    global SCORE_TO_COLOR
+
+    global WORD_WEIGHTS_LETTER_PROB
+    global ALLOWED_FULL
+    global WEIGHTS
+
+    WORD_WEIGHTS_LETTER_PROB = None
+    with open('./assets/unlimited_word_weights_letter_prob.json', 'r', encoding='utf-8') as file:
+        WORD_WEIGHTS_LETTER_PROB = json.loads(file.read())
+
+    ALLOWED_FULL, WEIGHTS = list(zip(*WORD_WEIGHTS_LETTER_PROB.items()))
+
+    TOP = 150
+    BOTTOM = 520
+    LEFT = 806
+    RIGHT = 1114
+    WORDLE_GAME_BOX_1080P = [LEFT, TOP, RIGHT, BOTTOM]
+    COL_WIDTH = 58
+    ROW_HIGHT = 58
+    PADDING = 4
+
+    PADDING_COLOR = [15, 15, 15]
+    CORRECT_ALL_COLOR = [61, 120, 61] # or [78, 141, 83]
+    CORRECT_LETTER_COLOR = [1, 190, 233] # or [1, 138, 163] or [1, 190, 233]
+    WRONG_COLOR = [142, 142, 142]
+
+    SCORE_TO_COLOR = {
+        utils.CORRECT_ALL: CORRECT_ALL_COLOR,
+        utils.CORRECT_LETTER: CORRECT_LETTER_COLOR,
+        utils.WRONG: WRONG_COLOR
+    }
 
 
 def get_screen(bbox: list, color_space: int = cv2.COLOR_BGR2RGB) -> np.ndarray:
@@ -133,7 +186,7 @@ def calc_row_y_end(row_number, crop_padding):
     return (ROW_HIGHT * (row_number + 1)) + (PADDING * row_number) - crop_padding
 
 
-def get_columns(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
+def get_columns(image: np.ndarray, crop_padding: int = 10) -> list[np.ndarray]:
     '''
     Split image of Wordle game board into separate columns, cropping them horizontally,
     and return a list of images by column
@@ -142,7 +195,7 @@ def get_columns(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
             for i in range(MAX_COLS)]
 
 
-def get_rows(image: np.ndarray, crop_padding: int = 15) -> list[np.ndarray]:
+def get_rows(image: np.ndarray, crop_padding: int = 10) -> list[np.ndarray]:
     '''
     Split image of Wordle game board into separate rows, cropping them vertically,
     and return a list of images by row
@@ -164,7 +217,7 @@ def get_words(screen: np.ndarray) -> list[str]:
     return [list(word) for word in text.lower().split('\n')[:-1]]
 
 
-def colors_equal(c_1: list, c_2: list, threshold: int = 1) -> bool:
+def colors_equal(c_1: list, c_2: list, threshold: int = 40) -> bool:
     '''
     Check if bgr colors are equal within a sertain threshold of each other
     '''
@@ -193,16 +246,13 @@ def get_scores(row: np.ndarray) -> list[int]:
 
 def remove_black_and_invert(image: np.ndarray) -> np.ndarray:
     '''
-    Set threshold on saturation and value channels
-    then combine them as a mask then invert and return black/white image
+    Convert image to greyscale, then set threshold get just get letters
+    invert to make letters black
     '''
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    _, sat, val = cv2.split(hsv)
-    thresh1 = cv2.threshold(sat, 92, 255, cv2.THRESH_BINARY)[1]
-    thresh2 = cv2.threshold(val, 128, 255, cv2.THRESH_BINARY)[1]
-    thresh2 = 255 - thresh2
-    mask = cv2.add(thresh1, thresh2)
-    return mask
+    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, binary_img = cv2.threshold(gray_img, 200, 255, cv2.THRESH_BINARY)
+    binary_img = 255 - binary_img
+    return binary_img
 
 
 def make_game_board(letters: list[str], scores: list[int]) -> wordle.Board:
@@ -228,7 +278,11 @@ def read_img_to_board(image: np.ndarray) -> wordle.Board:
     return make_game_board(letters, scores)
 
 
-def is_junk(word, hints_dict):
+def is_junk(word: str, hints_dict: dict) -> bool:
+    '''
+    Given various hints about a word from previous guesses,
+    check whether a falls within the hint's condition
+    '''
     for letter, index in hints_dict['CORRECT']:
         if word[index] != letter:
             return True
@@ -253,6 +307,20 @@ def type_guess(keyboard, guess: str) -> None:
         keyboard.release(letter)
     keyboard.press(Key.enter)
     keyboard.release(Key.enter)
+
+
+def type_next_game(keyboard) -> None:
+    '''
+    Press enter to go to next game after a game ends
+    '''
+    keyboard.press(Key.enter)
+    keyboard.release(Key.enter)
+    
+    
+def clear_entry(keyboard) -> None:
+    for _ in range(MAX_COLS):
+        keyboard.press(Key.backspace)
+        keyboard.release(Key.backspace)
 
 
 def find_words_with_most_unique_letters(unique_letters: set) -> set:
@@ -284,16 +352,95 @@ def choose_word_from_unique_words(unique_words: set) -> str:
     return np.random.choice(list(common_word_weights.keys()), 1, False, prob_dist)[0]
 
 
+def unlimited_won(image: np.ndarray) -> bool:
+    '''
+    Check for won game window in Wordle Unlimited
+    to see if game was won or not
+    '''
+    win_color = [211, 220, 199]
+    row = get_rows(image)[3]
+    won_flag = colors_equal(row[0][0], win_color, 12)
+    return won_flag
+
+
+def unlimited_loss(image: np.ndarray) -> bool:
+    '''
+    Check for won game window in Wordle Unlimited
+    to see if game was won or not
+    '''
+    lose_color = [208, 205, 238]
+    row = get_rows(image)[3]
+    loss_flag = colors_equal(row[0][0], lose_color, 12)
+    return loss_flag
+
+
+def unlimited_invalid_word(image: np.ndarray) -> bool:
+    '''
+    Check for won game window in Wordle Unlimited
+    to see if game was won or not
+    '''
+    invalid_color = [205, 243, 255]
+    row = get_rows(image)[2]
+    # print(row[5][0])
+    invalid_flag = colors_equal(row[5][0], invalid_color, 12)
+    return invalid_flag
+
+
+def unlimited_close_window(mouse):
+    '''
+    Close win/loss windows without going to next game
+    '''
+    mouse.position = (1100, 315)
+    mouse.press(Button.left)
+    mouse.release(Button.left)
+    mouse.position = (1200, 315)
+    time.sleep(0.5)
+
+
+def unlimited_state_handle(image: np.ndarray, mouse, keyboard):
+    '''
+    something
+    '''
+    # row = get_rows(image)[2]
+    # print(f'row: {row[5][0]}')
+    # cv2.imshow('img', row)
+    # cv2.waitKey(0)
+    if unlimited_won(image):
+        unlimited_close_window(mouse)
+        new_img = get_screen(WORDLE_GAME_BOX_1080P)
+        return new_img, True
+    elif unlimited_loss(image):
+        unlimited_close_window(mouse)
+        new_img = get_screen(WORDLE_GAME_BOX_1080P)
+        return new_img, True
+    elif unlimited_invalid_word(image):
+        new_img = get_screen(WORDLE_GAME_BOX_1080P)
+        return new_img, True
+    return image, False
+
+
 def main():
     '''
     Manual Tests
     '''
-    test_file_1 = './assets/test_img.png'
+    enable_unlimited()
+    # test_file_1 = './assets/test_img.png'
     # test_file_2 = './assets/test_img_2.png'
-    screen = read_image_from_file(test_file_1)
-    # screen = get_screen(WORDLE_GAME_BOX_1080P)
-    board = read_img_to_board(screen)
-    print(board.get_guesses_num())
+    # screen = read_image_from_file(test_file_1)
+    screen = get_screen(WORDLE_GAME_BOX_1080P)
+    rows = get_rows(screen)
+    print(rows[3][5][0])
+    print(unlimited_won(screen))
+    cv2.imshow('img', rows[3])
+    cv2.waitKey(0)
+    # from pynput.mouse import Controller
+    # unlimited_close_window(Controller())
+
+    # cv2.imshow('img', screen)
+    # cv2.waitKey(0)
+    # board = read_img_to_board(screen)
+    # print(board)
+    # print(board.get_guesses_num())
 
 
 if __name__ == '__main__':
