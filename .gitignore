@@ -1,5 +1,5 @@
 _*
 .py*
-*.txt
-*.csv
-.*
+./*.txt
+./*.csv
+./assets/dictionary.txt
