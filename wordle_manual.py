@@ -7,7 +7,7 @@ Author: Tony Audi teavse@rit.edu
 import ast
 
 ASSETS_PATH = '/assets'
-POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-answers.txt'
+POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-allowed-guesses.txt'
 WORDS = sorted([word.strip() for word in open(POSSIBLE_ANSWERS_PATH).readlines()]) # Possible answers
 CONDITIONS_PATH = f'.{ASSETS_PATH}/conditions.json'
 
