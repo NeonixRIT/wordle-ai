@@ -1,5 +1,5 @@
 # wordle-ai
-Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
+Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI. Eventually will add [Wordle Unlimited](https://www.wordleunlimited.com/) support.
 
 Includes a Command Line version of the [Wordle Game](https://www.powerlanguage.co.uk/wordle/)
 
