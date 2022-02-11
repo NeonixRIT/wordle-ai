@@ -13,16 +13,16 @@ with open(utils.ALLOWED_GUESSES_PATH, 'r', encoding='utf-8') as file:
     ALLOWED_WORDS = sorted([word.strip() for word in file.readlines()])
 
 # Possible answers
-WORDS = None
+ANSWERS = None
 with open(utils.POSSIBLE_ANSWERS_PATH, 'r', encoding='utf-8') as file:
-    WORDS = sorted([word.strip() for word in file.readlines()])
+    ANSWERS = sorted([word.strip() for word in file.readlines()])
 
 
 class Guess:
     '''
     A players single guess in a Wordle game
     '''
-    __slots__ = ['__guess', '__answer', '__feedback', '__score', '__answer_dict']
+    __slots__ = ['__guess', '__answer', '__feedback', '__score', '__answer_dict', '__score_pattern']
 
 
     def __init__(self, *args):
@@ -50,7 +50,7 @@ class Guess:
             self.__feedback = self.__build_feedback()
         elif len(args) == 1 and isinstance(args[0], list) and len(args[0]) == utils.WORD_LEN:
             self.__feedback = args[0]
-            self.__guess, self.__score = utils.values_from_result(self.__feedback)
+            self.__guess, self.__score, self.__score_pattern = utils.values_from_result(self.__feedback)
             self.__answer = self.__guess if self.is_answer() else None
             self.__answer_dict = None
 
@@ -98,6 +98,7 @@ class Guess:
             else: # letter not in word
                 result.append([letter, utils.WRONG])
         self.__score = sum([score[1] for score in result])
+        self.__score_pattern = tuple([score[1] for score in result])
         return result
 
 
@@ -129,6 +130,13 @@ class Guess:
         Get the raw string used to build feedback report
         '''
         return self.__guess
+    
+    
+    def get_score_pattern(self) -> tuple:
+        '''
+        Get tuple of just the score values
+        '''
+        return self.__score_pattern
 
 
 class Board:
@@ -201,7 +209,7 @@ class Wordle:
     def __init__(self, answer=None):
         self.__board = Board()
         self.__allowed_words = ALLOWED_WORDS
-        self.__words = WORDS
+        self.__words = ANSWERS
 
         if not answer:
             self.__answer = np.random.choice(self.__words, 1)[0]
