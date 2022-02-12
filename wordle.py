@@ -130,8 +130,8 @@ class Guess:
         Get the raw string used to build feedback report
         '''
         return self.__guess
-    
-    
+
+
     def get_score_pattern(self) -> tuple:
         '''
         Get tuple of just the score values
