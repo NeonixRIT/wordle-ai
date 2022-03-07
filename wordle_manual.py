@@ -17,11 +17,16 @@ CONDITIONS = ast.literal_eval(data)
 
 print(CONDITIONS)
 
+included_letters = ''
+for pos in 'abcde':
+    included_letters += CONDITIONS[pos]
+
 # Remove any words that don't include the letters we know are good
 NEW_WORDS = list()
 for word in WORDS:
     keep = True
-    for mustContain in CONDITIONS['Included']:
+    # for mustContain in CONDITIONS['Included']:
+    for mustContain in included_letters:
         if mustContain not in word:
             keep = False
     if keep:
