@@ -1,15 +1,35 @@
 import wordle
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 unlimited_words = []
 with open('./assets/dictionary.txt') as words_f:
     unlimited_words = [word.strip() for word in words_f if len(word.strip()) == 5]
-    
+
 removed_words = {}
 with open('./assets/removed_unlimited_words.txt') as words_f:
     removed_words = {item.split(':')[0].strip(): item.split(':')[1].strip() for item in words_f.readlines()}
-    
+
+
+words_freq = {}
+with open('./assets/word_frequencies.txt') as words_f:
+    words_freq = {item.split(' ')[0].strip(): float(item.split(' ')[1].strip()) if float(item.split(' ')[1].strip()) > 0 else 1e-19 for item in words_f.readlines()}
+
+# indexes = [float(i) for i, item in enumerate(sorted(words_freq.items(), key=lambda item: item[1]))]
+values = np.array([float(item[1]) for i, item in enumerate(words_freq.items())])
+
+norm_v = values / np.sum(values)
+word_weight_dict = {k: v for k, v in zip(words_freq.keys(), norm_v)}
+print(word_weight_dict)
+
+# print(list(norm_v))
+#
+# plt.plot(norm_v)
+plt.show()
+# print(values)
+exit()
+
 
 def count_letters():
     count_dict = dict()
@@ -32,7 +52,7 @@ def winrate_dict(filename):
             winrate = eval(tokens[1])[3]
             winrate_dict[word] = winrate
     return winrate_dict
-                
+
 
 
 def weighed_results(count_dict):
@@ -77,7 +97,7 @@ def main():
     # word_weights = None
     # with open('./assets/word_weights.json') as file:
     #     word_weights = json.loads(file.read())
-    
+
     # words, weight = list(zip(*winrates_dict.items()))
     # rachar
     # andom_word = np.random.choice(words, 5, False, np.array(weight) / sum(weight))
@@ -106,11 +126,11 @@ def main():
             unlimited_words.remove(word)
         word_num += 1
         print(f'progress: {round((word_num / total_words) * 100, 4)}%')
-        
+
     up_removed_words = {}
     with open('./assets/removed_unlimited_words.txt') as words_f:
         up_removed_words = {item.split(':')[0].strip(): item.split(':')[1].strip() for item in words_f.readlines()}
-        
+
     for key in up_removed_words:
         if key in unlimited_words:
             unlimited_words.remove(key)
@@ -123,7 +143,7 @@ def main():
     with open('./assets/unlimited_words.txt', 'w') as file:
         for word in unlimited_words:
             file.write(f'{word}\n')
-    
+
     with open('./assets/unlimited_word_weights_letter_prob.json', 'w') as file:
         json.dump(word_weights, file)
 

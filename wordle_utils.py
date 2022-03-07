@@ -41,10 +41,12 @@ def values_from_result(result: list[str, int]) -> tuple:
     '''
     guess = ''
     score = 0
+    score_pattern = []
     for letter, value in result:
         guess += letter
         score += value
-    return guess, score
+        score_pattern.append(score)
+    return guess, score, tuple(score_pattern)
 
 
 def remove_flag_from_dict(flag, result, answer_dict):

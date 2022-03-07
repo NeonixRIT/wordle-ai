@@ -24,7 +24,7 @@ class WordleAI():
                  '__guesses', '__verbose', '__probability_distribution']
 
 
-    def __init__(self, game: w.Wordle, starting_word: str = 'proms', verbose = True) -> None:
+    def __init__(self, game: w.Wordle, starting_word: str = 'proms', verbose=True) -> None:
         self.__hints_dict = {
             # Letters in the word
             'INCLUDED': set(),
@@ -183,7 +183,7 @@ class WordleAI():
                 score = guess.get_score()
                 self.read_report(guess) # update hints dict from guess report
 
-                if self.__verbose: 
+                if self.__verbose:
                     print(guess, str(score).ljust(5), len(self.__word_weights_dict))
 
                 if score >= 100: # if game is solved, end
@@ -199,8 +199,8 @@ class WordleAI():
                 time.sleep(3)
         time.sleep(1)
         return False
-    
-    
+
+
     def test_word_unlimited(self) -> None:
         keyboard = K_CON()
         mouse = M_CON()
@@ -211,7 +211,7 @@ class WordleAI():
             board = utils.read_img_to_board(game_img)
             if done:
                 raise AttributeError
-            
+
             # make guess
             utils.type_guess(keyboard, self.__next_guess)
             # wait for website animation to finish
@@ -223,7 +223,7 @@ class WordleAI():
             if done:
                 raise AttributeError
             guess = board.get_guesses()[self.__guesses]
-            score = guess.get_score()
+            _ = guess.get_score()
             self.read_report(guess) # update hints dict from guess report
             from pynput.keyboard import Key
             keyboard.press(Key.f5)
@@ -237,7 +237,7 @@ class WordleAI():
 
     def run_web_gui_unlimited(self) -> None:
         '''
-        Attempt to solve web GUI Wordle Unlimited game by reading board state in 
+        Attempt to solve web GUI Wordle Unlimited game by reading board state in
         from images and narrowing down word list from consecutive guesss' feedback
         '''
         keyboard = K_CON()
@@ -279,7 +279,7 @@ class WordleAI():
                 score = guess.get_score()
                 self.read_report(guess) # update hints dict from guess report
 
-                if self.__verbose: 
+                if self.__verbose:
                     print(guess, str(score).ljust(5), len(self.__word_weights_dict))
 
                 if score >= 100: # if game is solved, end

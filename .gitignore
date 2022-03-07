@@ -1,5 +1,3 @@
 _*
 .py*
-./*.txt
-./*.csv
-./assets/dictionary.txt
+first_*
