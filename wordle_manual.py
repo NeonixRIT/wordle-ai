@@ -15,11 +15,11 @@ with open(CONDITIONS_PATH) as f:
     data = f.read()
 CONDITIONS = ast.literal_eval(data)
 
-print(CONDITIONS)
+# print(CONDITIONS)
 
 included_letters = ''
 for pos in 'abcde':
-    included_letters += CONDITIONS[pos]
+    included_letters += CONDITIONS[pos].lower()
 
 # Remove any words that don't include the letters we know are good
 NEW_WORDS = list()
@@ -37,7 +37,7 @@ WORDS = NEW_WORDS
 NEW_WORDS = list()
 for word in WORDS:
     keep = True
-    for mustExclude in CONDITIONS['Excluded']:
+    for mustExclude in CONDITIONS['Excluded'].lower():
         if mustExclude in word:
             keep = False
     if keep:
@@ -48,7 +48,7 @@ WORDS = NEW_WORDS
 for pos in '12345':
     NEW_WORDS = list()
     for word in WORDS:
-        mustMatch = CONDITIONS[pos]
+        mustMatch = CONDITIONS[pos].lower()
         if mustMatch == '' or word[int(pos) - 1] == mustMatch:
             NEW_WORDS.append(word)
     WORDS = NEW_WORDS
@@ -59,7 +59,7 @@ for pos in 'abcde':
     i += 1
     NEW_WORDS = list()
     for word in WORDS:
-        mustExclude = CONDITIONS[pos]
+        mustExclude = CONDITIONS[pos].lower()
         if len(mustExclude) == 0:
             NEW_WORDS.append(word)
         else:
