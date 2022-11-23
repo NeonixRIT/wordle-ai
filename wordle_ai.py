@@ -1,28 +1,25 @@
-'''
+"""
 Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
 
 Author: Kamron Cole kjc8084@rit.edu
-'''
+"""
 import functools
 import time
 
 import numpy as np
 import alive_progress as ap
-from pynput.keyboard import Controller as K_CON
-from pynput.mouse import Controller as M_CON
 
 import wordle as w
 import wordle_utils as wu
 import wordle_ai_utils as utils
 
 
-class WordleAI():
-    '''
+class WordleAI:
+    """
     Rudimentary AI to solve wordle puzzle, either from web GUI or internal CLI
-    '''
+    """
     __slots__ = ['__hints_dict', '__wordle', '__word_weights_dict', '__next_guess',
                  '__guesses', '__verbose', '__probability_distribution']
-
 
     def __init__(self, game: w.Wordle, starting_word: str = 'proms', verbose=True) -> None:
         self.__hints_dict = {
@@ -44,19 +41,17 @@ class WordleAI():
         self.__probability_distribution = np.array(list(weights)) / sum(weights)
         self.__verbose = verbose
 
-
     def make_guess(self, raw_guess: str) -> w.Guess:
-        '''
+        """
         Make a guess on an internal Wordle game
-        '''
+        """
         return self.__wordle.make_guess(raw_guess)
 
-
     def read_report(self, guess: w.Guess) -> None:
-        '''
+        """
         Read a guess's report and add letters to dict that will help solve
         for a word by removing invalid entries from the word list
-        '''
+        """
         feedback = guess.get_feedback()
         for i, token in enumerate(feedback):
             letter, result = token
@@ -81,21 +76,19 @@ class WordleAI():
                 self.__hints_dict['GUESSED'].add((letter, i))
                 self.__hints_dict['EXCLUDED'].add(letter)
 
-
     def update_probability_distribution(self):
-        '''
+        """
         Update probablility distribution after words list has been narrowed
-        '''
+        """
         weights = self.__word_weights_dict.values()
         self.__probability_distribution = np.array(list(weights)) / sum(weights)
 
-
     def narrow_words(self) -> None:
-        '''
+        """
         Using a dict of all feedback gained from previous guesses, remove words and
         their weight from from their respective list so that the remaining words meet
         the criteria of the answer
-        '''
+        """
         if self.__next_guess in self.__word_weights_dict:
             self.__word_weights_dict.pop(self.__next_guess)
 
@@ -105,13 +98,12 @@ class WordleAI():
 
         self.update_probability_distribution()
 
-
     def find_unique_letters(self) -> set:
-        '''
+        """
         Find unique letters in the remaining words list, if common letters is empty,
         meaning all remaining words have letters in common but not in the same order,
         remove a word from remaining words list and try again
-        '''
+        """
         words_left = list(self.__word_weights_dict.keys())
         common_letters = functools.reduce(lambda x, y: set(x) ^ set(y), words_left)
         while not common_letters:
@@ -119,23 +111,20 @@ class WordleAI():
             common_letters = functools.reduce(lambda x, y: set(x) ^ set(y), words_left)
         return common_letters
 
-
     def prioritize_unique_letters(self):
-        '''
+        """
         Choose a new word to guess that tries to eliminate a majority of the unique letters
         in the words remaining
-        '''
+        """
         common_letters = self.find_unique_letters()
         words_with_common_letters = utils.find_words_with_most_unique_letters(common_letters)
         word = utils.choose_word_from_unique_words(words_with_common_letters)
         return word
 
-
     def calc_next_guesses(self, score: int) -> str:
-        '''
+        """
         Find next guess based on score
-        '''
-        guess = ''
+        """
         # randomly choose next guess from a weighted list
         word_list = list(self.__word_weights_dict.keys())
         prob_dist = self.__probability_distribution
@@ -151,155 +140,11 @@ class WordleAI():
             guess = self.prioritize_unique_letters()
         return guess
 
-
-    def run_web_gui(self) -> None:
-        '''
-        Attempt to solve web GUI Wordle game by reading board state in from images and
-        narrowing down word list from consecutive guesss' feedback
-        '''
-        keyboard = K_CON()
-        score = 0
-        time.sleep(1)
-
-        if self.__verbose:
-            guess_col = 'Guess'.ljust(16)
-            score_col = 'Score'.ljust(6)
-            words_remain_len = 'Remaining Words'
-            print(guess_col, score_col, words_remain_len, sep='')
-
-        while score < 100 and self.__guesses < wu.MAX_GUESSES:
-            try:
-                # check on game window
-                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-                board = utils.read_img_to_board(game_img)
-                # make guess
-                utils.type_guess(keyboard, self.__next_guess)
-                # wait for website animation to finish
-                time.sleep(3)
-                # update internal board from image
-                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-                board = utils.read_img_to_board(game_img)
-                guess = board.get_guesses()[self.__guesses]
-                score = guess.get_score()
-                self.read_report(guess) # update hints dict from guess report
-
-                if self.__verbose:
-                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
-
-                if score >= 100: # if game is solved, end
-                    return True
-
-                self.narrow_words() # remove invalid words from dictionary of possible words
-                self.__guesses += 1
-                self.__next_guess = self.calc_next_guesses(score)
-            except AttributeError as attr_e:
-                msg = f'{wu.RED}Error: {attr_e}\n' \
-                    + f'likely because board was not found, or not in focus.{wu.WHITE}'
-                print(msg)
-                time.sleep(3)
-        time.sleep(1)
-        return False
-
-
-    def test_word_unlimited(self) -> None:
-        keyboard = K_CON()
-        mouse = M_CON()
-        try:
-            # check on game window
-            game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-            game_img, done = utils.unlimited_state_handle(game_img, mouse, keyboard)
-            board = utils.read_img_to_board(game_img)
-            if done:
-                raise AttributeError
-
-            # make guess
-            utils.type_guess(keyboard, self.__next_guess)
-            # wait for website animation to finish
-            time.sleep(2)
-            # update internal board from image
-            game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-            game_img, done = utils.unlimited_state_handle(game_img, mouse, keyboard)
-            board = utils.read_img_to_board(game_img)
-            if done:
-                raise AttributeError
-            guess = board.get_guesses()[self.__guesses]
-            _ = guess.get_score()
-            self.read_report(guess) # update hints dict from guess report
-            from pynput.keyboard import Key
-            keyboard.press(Key.f5)
-            time.sleep(2)
-        except AttributeError as attr_e:
-            from pynput.keyboard import Key
-            keyboard.press(Key.f5)
-            time.sleep(2)
-            raise attr_e
-
-
-    def run_web_gui_unlimited(self) -> None:
-        '''
-        Attempt to solve web GUI Wordle Unlimited game by reading board state in
-        from images and narrowing down word list from consecutive guesss' feedback
-        '''
-        keyboard = K_CON()
-        mouse = M_CON()
-        score = 0
-        time.sleep(3)
-        if self.__verbose:
-            guess_col = 'Guess'.ljust(16)
-            score_col = 'Score'.ljust(6)
-            words_remain_len = 'Remaining Words'
-            print(guess_col, score_col, words_remain_len, sep='')
-
-        while score < 100 and self.__guesses < wu.MAX_GUESSES:
-            try:
-                # check on game window
-                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-                game_img, done = utils.unlimited_state_handle(game_img, mouse)
-                board = utils.read_img_to_board(game_img)
-                if done:
-                    guess = board.get_guesses()[self.__guesses]
-                    score = guess.get_score()
-                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
-                    break
-                # make guess
-                utils.type_guess(keyboard, self.__next_guess)
-                # wait for website animation to finish
-                time.sleep(1.5)
-                # update internal board from image
-                game_img = utils.get_screen(utils.WORDLE_GAME_BOX_1080P)
-                game_img, done = utils.unlimited_state_handle(game_img, mouse)
-                board = utils.read_img_to_board(game_img)
-                if done:
-                    guess = board.get_guesses()[self.__guesses]
-                    score = guess.get_score()
-                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
-                    break
-
-                guess = board.get_guesses()[self.__guesses]
-                score = guess.get_score()
-                self.read_report(guess) # update hints dict from guess report
-
-                if self.__verbose:
-                    print(guess, str(score).ljust(5), len(self.__word_weights_dict))
-
-                if score >= 100: # if game is solved, end
-                    return True
-
-                self.narrow_words() # remove invalid words from dictionary of possible words
-                self.__guesses += 1
-                self.__next_guess = self.calc_next_guesses(score)
-            except AttributeError:
-                time.sleep(1)
-            utils.type_next_game(keyboard)
-        time.sleep(1)
-        return False
-
-
     def run_cli(self):
-        '''
+        """
         Attempt to solve CLI Wordle game by reading board state in from Wordle game and narrowing
         down word list from consecutive guesss' feedback
-        '''
+        """
         score = 0
 
         if self.__verbose:
@@ -324,33 +169,31 @@ class WordleAI():
             self.__next_guess = self.calc_next_guesses(score)
         return False
 
-
     def get_remaining_words(self) -> list:
-        '''
+        """
         Get list of remaining words from words weight dict
-        '''
+        """
         return list(self.__word_weights_dict.keys())
 
-
     def get_next_guess(self) -> str:
-        '''
+        """
         Return current next guess
-        '''
+        """
         return self.__next_guess
 
 
-def test_winrate():
-    '''
+def test_winrate(starting_word: str = 'proms'):
+    """
     Run multiple iterations to get a rough guess of the AI's winrate,
     usually run between various changes to find optimal values
-    '''
+    """
     wins = 0
     loses = 0
     iterations = 100000
     with ap.alive_bar(iterations) as prog_bar:
         for _ in range(iterations):
             game = w.Wordle()
-            bot = WordleAI(game, verbose=False)
+            bot = WordleAI(game=game, starting_word=starting_word, verbose=False)
             result = bot.run_cli()
             if result:
                 wins += 1
@@ -363,29 +206,8 @@ def test_winrate():
         print(f'Loss rate: {round((loses / iterations) * 100, 2)}%')
 
 
-def unlimited_solver(runs):
-    '''
-    Solve a wordle game via web GUI
-    '''
-    utils.enable_unlimited()
-    for _ in range(runs):
-        game = w.Wordle()
-        bot = WordleAI(game)
-        bot.run_web_gui_unlimited()
-        print()
-
-
-def web_solver():
-    '''
-    Solve a wordle game via web GUI
-    '''
-    game = w.Wordle()
-    bot = WordleAI(game)
-    bot.run_web_gui()
-
-
 def cli_solver():
-    '''Solve a wordle game via CLI'''
+    """Solve a wordle game via CLI"""
     game = w.Wordle()
     print(f'Answer: {game.get_answer()}')
     bot = WordleAI(game)
@@ -393,13 +215,11 @@ def cli_solver():
 
 
 def main():
-    '''
+    """
     Main
-    '''
-    # web_solver()
-    # test_winrate()
+    """
+    test_winrate()
     # cli_solver()
-    unlimited_solver(2)
 
 
 if __name__ == '__main__':

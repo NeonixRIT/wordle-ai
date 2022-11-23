@@ -1,6 +1,6 @@
-'''
+"""
 Helper functions used by Wordle
-'''
+"""
 # Colours used in output
 RED = '\033[1;31m'
 GREEN = '\033[1;32m'
@@ -12,7 +12,9 @@ WORD_LEN = 5
 MAX_GUESSES = 6
 ASSETS_PATH = '/assets'
 ALLOWED_GUESSES_PATH = f'.{ASSETS_PATH}/wordle-allowed-guesses.txt'
+NEW_ALLOWED_GUESSES_PATH = f'.{ASSETS_PATH}/wordle_nyt_allowed_guesses.txt'
 POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle-answers.txt'
+NEW_POSSIBLE_ANSWERS_PATH = f'.{ASSETS_PATH}/wordle_nyt_answers.txt'
 
 # Numerical values too handle guess results easier
 CORRECT_ALL = 20 # correct letter and position.
@@ -29,16 +31,16 @@ GUESS_RESULT_DICT = {
 
 
 def clear_screen():
-    '''
+    """
     Clear terminal based on operating system
-    '''
+    """
     print(chr(27) + "[2J")
 
 
 def values_from_result(result: list[str, int]) -> tuple:
-    '''
+    """
     Get raw guess word and score of a guess from result list
-    '''
+    """
     guess = ''
     score = 0
     score_pattern = []
@@ -50,10 +52,10 @@ def values_from_result(result: list[str, int]) -> tuple:
 
 
 def remove_flag_from_dict(flag, result, answer_dict):
-    '''
+    """
     Goes back in results list and changes score in first instance
     of flag (list[letter, score]) to the proper value.
-    '''
+    """
     if flag in result:
         for _, value in enumerate(result):
             if value == flag:

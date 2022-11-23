@@ -1,9 +1,9 @@
-'''
+"""
 A helper to solve Wordle games in action!
 Narrows down word list using a json containing guess feedback information.
 
 Author: Tony Audi teavse@rit.edu
-'''
+"""
 import ast
 
 ASSETS_PATH = '/assets'
