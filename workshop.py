@@ -137,6 +137,7 @@ def main():
     #
     # with open('./assets/unlimited_word_weights_letter_prob.json', 'w') as file:
     #     json.dump(word_weights, file)
+    pass
 
 
 if __name__ == '__main__':

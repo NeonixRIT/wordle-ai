@@ -182,14 +182,14 @@ class WordleAI:
         return self.__next_guess
 
 
-def test_winrate(starting_word: str = 'proms'):
+def test_winrate(starting_word: str = 'proms', iterations = 100000):
     """
     Run multiple iterations to get a rough guess of the AI's winrate,
     usually run between various changes to find optimal values
     """
     wins = 0
     loses = 0
-    iterations = 100000
+    iterations = iterations
     with ap.alive_bar(iterations) as prog_bar:
         for _ in range(iterations):
             game = w.Wordle()
@@ -200,26 +200,35 @@ def test_winrate(starting_word: str = 'proms'):
             else:
                 loses += 1
             prog_bar()
-        print(f'Wins: {wins}')
-        print(f'Loses: {loses}')
-        print(f'Win rate: {round((wins / iterations) * 100, 2)}%')
-        print(f'Loss rate: {round((loses / iterations) * 100, 2)}%')
+    return wins / iterations
 
 
-def cli_solver():
+def cli_solver(starting_word: str = 'proms'):
     """Solve a wordle game via CLI"""
     game = w.Wordle()
     print(f'Answer: {game.get_answer()}')
-    bot = WordleAI(game)
+    bot = WordleAI(game, starting_word)
     bot.run_cli()
+
+
+def average_score(starting_word, runs):
+    score = 0
+    # with ap.alive_bar(runs) as prog_bar:
+    for _ in range(runs):
+        game = w.Wordle()
+        bot = WordleAI(game, starting_word, verbose=False)
+        score += bot.run_cli()
+        # prog_bar()
+    return score / runs
 
 
 def main():
     """
     Main
     """
-    test_winrate()
-    # cli_solver()
+    import json
+    # diff = 0.00848 # average difference in winrates for 100000 games vs 100 games
+    cli_solver()
 
 
 if __name__ == '__main__':
