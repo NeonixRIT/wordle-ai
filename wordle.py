@@ -21,8 +21,9 @@ import wordle_utils as utils
 with open(utils.NEW_ALLOWED_GUESSES_PATH, 'r', encoding='utf-8') as file:
     ALLOWED_WORDS = sorted([word.strip() for word in file.readlines()])
 
-with open(utils.NEW_POSSIBLE_ANSWERS_PATH, 'r', encoding='utf-8') as file:
-    ANSWERS = sorted([word.strip() for word in file.readlines()])
+# with open(utils.NEW_POSSIBLE_ANSWERS_PATH, 'r', encoding='utf-8') as file:
+#     ANSWERS = sorted([word.strip() for word in file.readlines()])
+
 
 class Guess:
     """
@@ -168,7 +169,7 @@ class Board:
         self.__board[self.__guesses] = guess
         self.__guesses += 1
 
-    def get_guesses(self) -> list:
+    def get_guesses(self) -> list[Guess]:
         """
         Get list of guesses in a board
         """
@@ -186,6 +187,77 @@ class Board:
         """
         return self.__guesses == 0
 
+    def get_last_guess(self) -> Guess:
+        """
+        Get last guess made
+        """
+        return [guess for guess in self.__board if isinstance(guess, Guess)][-1]
+
+
+def get_state_from_board(board: Board) -> tuple:
+    """
+    Get board state as a tuple of 61 integers with values 0 to 1
+    """
+
+    board_state = [0] * 61
+    guesses_left = utils.MAX_GUESSES - board.get_guesses_num()
+    guesses_left_norm = round(guesses_left / utils.MAX_GUESSES, 2)
+
+    board_state[0] = guesses_left_norm
+
+    letters_norm_dict = {letter: (i + 1) / 27 for i, letter in enumerate('abcdefghijklmnopqrstuvwxyz')}
+    letters_norm_dict[''] = 0
+
+    score_trans_dict = {
+        0: 0.33,
+        10: 0.66,
+        20: 1,
+    }
+
+    index = 1
+    for guess in board.get_guesses():
+        if isinstance(guess, str):
+            continue
+
+        guess_feedback = guess.get_feedback()
+        for letter, score in guess_feedback:
+            letter_index_norm = letters_norm_dict[letter]
+            letter_score_norm = score_trans_dict[score]
+            board_state[index] = letter_index_norm
+            board_state[index + 1] = letter_score_norm
+            index += 2
+
+    return tuple(board_state)
+
+
+def get_board_from_state(state: tuple) -> Board:
+    """
+    Get board from state tuple
+    """
+    board = Board()
+    guesses_left = round(state[0] * utils.MAX_GUESSES)
+    print(guesses_left)
+
+    letters_norm_dict = {(i + 1) / 27: letter for i, letter in enumerate('abcdefghijklmnopqrstuvwxyz')}
+    letters_norm_dict[0] = ' '
+
+    score_trans_dict = {
+        0.33: 0,
+        0.66: 10,
+        1: 20
+    }
+
+    index = 1
+    for _ in range(utils.MAX_GUESSES - guesses_left):
+        guess = []
+        for _ in range(5):
+            letter_index_norm = state[index]
+            letter_score_norm = state[index + 1]
+            guess.append([letters_norm_dict[letter_index_norm], score_trans_dict[letter_score_norm]])
+            index += 2
+        board.make_guess(Guess(guess))
+    return board
+
 
 class Wordle:
     """
@@ -193,19 +265,19 @@ class Wordle:
     a certain number of guesses gives feedback on the letter's position and whether
     the word contains it for each guess
     """
-    __slots__ = ['__allowed_words', '__words', '__answer', '__guesses', '__board']
+    __slots__ = ['__allowed_words', '__words', '__answer', '__guesses', '__board', '__game_won', '__game_over', 'use_allowed_words']
 
     def __init__(self, answer=None):
         self.__board = Board()
         self.__allowed_words = ALLOWED_WORDS
-        self.__words = ANSWERS
+        self.__words = ALLOWED_WORDS
+        self.use_allowed_words = True
 
-        if not answer:
-            self.__answer = np.random.choice(self.__words, 1)[0]
-        else:
-            self.__answer = answer
+        self.__answer = np.random.choice(self.__words, 1)[0] if answer is None else answer
 
         self.__guesses = 0
+        self.__game_won = False
+        self.__game_over = False
 
     def __str__(self):
         return str(self.__board)
@@ -222,10 +294,16 @@ class Wordle:
 
         guess = Guess(raw_guess, self.__answer)
         self.__board.make_guess(guess)
+        self.__guesses += 1
+        if guess.is_answer():
+            self.__game_won = True
+            self.__game_over = True
+        elif self.__guesses == utils.MAX_GUESSES:
+            self.__game_over = True
 
         return guess
 
-    def play(self):
+    def play(self, empty_guess_ends=True):
         """
         Play the game through a command line, prompting for a guess MAX_GUESSES number of times
         invalid guesses arent counted
@@ -234,13 +312,18 @@ class Wordle:
         print()
         while self.__guesses < utils.MAX_GUESSES:
             print(self.__board)
+            # print()
+            # print(get_state_from_board(self.__board))
+            # print(get_board_from_state(get_state_from_board(self.__board)))
             print()
             raw_guess = input('Make a guess: ')
             guess = self.make_guess(raw_guess)
-            if not guess:
+            if not guess and not empty_guess_ends:
+                continue
+            elif not guess and empty_guess_ends:
+                self.__guesses = utils.MAX_GUESSES
                 continue
 
-            self.__guesses += 1
             if guess.is_answer():
                 utils.clear_screen()
                 print(self.__board)
@@ -254,6 +337,7 @@ class Wordle:
         print(self.__board)
         print(f'{utils.RED}Unluckers! Maybe next time.{utils.WHITE}')
 
+
     def get_answer(self) -> str:
         """
         Get game's current answer
@@ -265,6 +349,24 @@ class Wordle:
         Get board representation of current game
         """
         return self.__board
+
+    def is_game_won(self) -> bool:
+        """
+        If game is won, return True
+        """
+        return self.__game_won
+
+    def is_game_over(self) -> bool:
+        """
+        If game is over, return True
+        """
+        return self.__game_over
+
+    def get_guesses_left(self) -> int:
+        """
+        Get number of guesses left
+        """
+        return utils.MAX_GUESSES - self.__guesses
 
 
 def main():

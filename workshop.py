@@ -7,9 +7,6 @@ import wordle_utils as utils
 with open(utils.NEW_ALLOWED_GUESSES_PATH, 'r', encoding='utf-8') as file:
     ALLOWED_WORDS = sorted([word.strip() for word in file.readlines()])
 
-with open(utils.NEW_POSSIBLE_ANSWERS_PATH, 'r', encoding='utf-8') as file:
-    ANSWERS = sorted([word.strip() for word in file.readlines()])
-
 # words_freq = {}
 # with open('./assets/word_frequencies.txt') as words_f:
 #     words_freq = {item.split(' ')[0].strip(): float(item.split(' ')[1].strip()) if float(item.split(' ')[1].strip()) > 0 else 1e-19 for item in words_f.readlines()}
@@ -81,6 +78,24 @@ def word_weight(weighted_dict):
     return word_weights
 
 
+def patterns_for_word_group(group_num, total_groups, all_patterns: dict):
+    result_patterns = {}
+    if group_num == total_groups - 1:
+        word_group = ALLOWED_WORDS[len(ALLOWED_WORDS) // total_groups * group_num:]
+    else:
+        word_group = ALLOWED_WORDS[len(ALLOWED_WORDS) // total_groups * group_num:len(ALLOWED_WORDS) // total_groups * (group_num + 1)]
+
+    for answer in word_group:
+        print(f'[{group_num}] Building patterns for {answer} ({len(result_patterns)}/{len(word_group)})...')
+        patterns = []
+        for first_guess in ALLOWED_WORDS:
+            pattern = wordle.Guess(first_guess, answer).get_score_pattern()
+            patterns.append(pattern)
+        result_patterns[answer] = patterns
+
+    all_patterns[group_num] = result_patterns
+
+
 def main():
     # count_dict = count_letters()
     # weight_dict = weighed_results(count_dict)
@@ -137,6 +152,48 @@ def main():
     #
     # with open('./assets/unlimited_word_weights_letter_prob.json', 'w') as file:
     #     json.dump(word_weights, file)
+    # from pickle import dump, load
+    # from multiprocessing import cpu_count, Pool, Manager
+
+    # all_patterns = Manager().dict()
+    # for i in range(cpu_count()):
+    #     all_patterns[i] = {}
+
+    # with Pool(cpu_count()) as p:
+    #     p.starmap(patterns_for_word_group, [(i, cpu_count(), all_patterns) for i in range(cpu_count())])
+
+    # print('Building answer to patterns...')
+    # all_patterns = dict(all_patterns)
+    # answer_to_patterns = {}
+    # for group_num in range(len(all_patterns)):
+    #     print(f'\t [{group_num}] Started...')
+    #     for word in sorted(list(all_patterns[group_num].keys())):
+    #         answer_to_patterns[word] = list(all_patterns[group_num][word])
+
+    # print('Building final patterns list...')
+    # final_patterns_list = []
+    # for answer_word in sorted(list(answer_to_patterns.keys())):
+    #     final_patterns_list.append(answer_to_patterns[answer_word])
+
+    # print('Saving pickled list...')
+    # with open('./assets/patterns.pkl', 'wb') as file:
+    #     dump(final_patterns_list, file)
+    # import sys
+    # with open('./assets/patterns.pkl', 'rb') as file:
+    #     patterns = load(file)
+    #     print(type(patterns))
+    #     print(len(patterns))
+    #     for i in range(14855):
+    #         pattern = patterns[i][i]
+    #         assert pattern == (20, 20, 20, 20, 20)
+    # import json
+    # word_weights = None
+    # with open('./assets/nyt_first_guess_word_weights_info_theory.json') as file:
+    #     word_weights = json.load(file)
+
+
+
+
     pass
 
 
