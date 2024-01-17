@@ -424,8 +424,11 @@ async def just_data_yknow(first_guess_idx: int):
                     values.append(tuple([first_guess_idx, first_pattern_idx, second_guess_idx, expected_info]))
                 if not values:
                     continue
-                await cursor.execute(f'INSERT INTO second_guess_info (first_guess_idx, first_pattern_idx, second_guess_idx, expected_info) VALUES {", ".join([str(value) for value in values])}')
-                await db_conn.commit()
+                with open(f'./assets/second_guess_info_{first_guess_idx}.txt', 'a', encoding='utf-8') as file:
+                    file.writelines(['"' + str(value)[1:-1].replace(' ', '').replace(',', '", "') + '"\n' for value in values])
+                    file.flush()
+                # await cursor.execute(f'INSERT INTO second_guess_info (first_guess_idx, first_pattern_idx, second_guess_idx, expected_info) VALUES {", ".join([str(value) for value in values])}')
+                # await db_conn.commit()
                 # print()
     return perf_counter() - start
 
